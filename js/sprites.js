@@ -94,7 +94,7 @@ const HEADS = {
 const CHARS = [
   {
     id: 'kuri', pIdx: 1, name: '栗子', en: 'KURI', title: '文青鍍膜師',
-    blurb: '咖啡廳打工的美術系學生，最受不了車上的水斑。',
+    blurb: '美術系打工族，最受不了車上的水斑。',
     stats: { spd: 3, pow: 3, jmp: 3 }, speed: 1.35, power: 1.0, jump: 1.0, scale: 1.0,
     pal: { B: '#b5713c', b: '#7f4a22', H: '#7a5536', h: '#4f3520', S: '#f6d2b8', s: '#d8a888', G: '#9b7563', E: '#2a1c1c', M: '#c4505a', W: '#fff' },
     body: { top: '#efe4c8', topS: '#c9b791', sleeve: '#e6d9b8', bottom: 'skirt', skirt: '#26346a', dots: ['#d8402c', '#f0b040', '#e86a80'],
@@ -104,7 +104,7 @@ const CHARS = [
   },
   {
     id: 'rin', pIdx: 2, name: '小鈴', en: 'RIN', title: '客服專線王牌',
-    blurb: '一天接三百通電話，音波比洗車水柱還強。',
+    blurb: '一天接三百通電話，音波比水柱還強。',
     stats: { spd: 5, pow: 2, jmp: 3 }, speed: 1.6, power: 0.85, jump: 1.0, scale: 0.98,
     pal: { K: '#1c1c22', k: '#3a3a44', H: '#25242c', h: '#121117', S: '#f4d3c0', s: '#d6a690', E: '#1a1418', R: '#b8505e', W: '#fff' },
     body: { top: '#7c859e', topS: '#5d6680', sleeve: '#7c859e', trim: '#232c5a', collar: '#dbe6f6', bow: '#232c5a',
@@ -114,7 +114,7 @@ const CHARS = [
   },
   {
     id: 'leo', pIdx: 3, name: '雷歐', en: 'LEO', title: '流浪拋光職人',
-    blurb: '話很少，手很重。一出手連柏油都會跪。',
+    blurb: '話很少，手很重，連柏油都會跪。',
     stats: { spd: 2, pow: 5, jmp: 2 }, speed: 1.1, power: 1.35, jump: 0.92, scale: 1.07,
     pal: { H: '#8a5228', h: '#5b3418', S: '#e2b48f', s: '#bf8c6a', E: '#2a1a12', G: '#a8844e', D: '#4a2c18', R: '#a86058' },
     body: { top: '#1d1d22', topS: '#0f0f13', sleeve: '#1d1d22', turtle: true, bottom: 'pants', pants: '#2b3d66', pantsS: '#1f2c4c',
@@ -124,7 +124,7 @@ const CHARS = [
   },
   {
     id: 'momo', pIdx: 4, name: '蜜桃', en: 'MOMO', title: '業績女王',
-    blurb: '業績第一的超級業務，高跟鞋踢得比誰都高。',
+    blurb: '業績第一的業務，高跟鞋踢得最高。',
     stats: { spd: 3, pow: 3, jmp: 5 }, speed: 1.4, power: 1.05, jump: 1.18, scale: 1.0,
     pal: { H: '#efd59e', h: '#c4a466', S: '#fadcd0', s: '#e3b2a2', E: '#4a2a20', W: '#fff', R: '#e8607a' },
     body: { top: '#ea4f95', topS: '#b8336f', sleeve: '#ea4f95', shirt: '#fbc2d6', bottom: 'pencil', skirt: '#ea4f95',

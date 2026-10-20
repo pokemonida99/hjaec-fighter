@@ -26,15 +26,24 @@ const QUOTES = {
 };
 
 // ---------- 全域狀態 ----------
+// 排行榜（本機）：預設成績是示範用的假名字
+const BOARD_DEFAULT = [['HJA', 60000, 0], ['RED', 50000, 1], ['WAX', 40000, 2], ['CAR', 30000, 3], ['GLO', 20000, 0]];
+function loadBoard() {
+  const b = Store.get('board', null);
+  if (Array.isArray(b) && b.length) return b;
+  return BOARD_DEFAULT.map(x => x.slice());
+}
+let BOARD = loadBoard();
 const G = {
-  scene: 'boot', t: 0, st: 0, chIdx: 0, stageIdx: 0, total: 0, hi: Store.get('hi', 0),
-  hitstop: 0, shake: 0, paused: false,
+  scene: 'boot', t: 0, st: 0, chIdx: 0, stageIdx: 0, total: 0, hi: Math.max(Store.get('hi', 0), BOARD[0][1]),
+  hitstop: 0, shake: 0, paused: false, rankHi: -1, demo: false, pi: 0,
 };
 let P = null, car = null, bg = null, stage = null;
 let projs = [], blobs = [], birds = [], poops = [], parts = [], pops = [], decals = [];
 let R = null;   // 本關紀錄
 
-const portraitImg = {};
+const portraitImg = {}, portraitBig = {};
+for (const k of [1, 2, 3, 4]) { const im = new Image(); im.src = PORTRAITS_BIG[k]; portraitBig[k] = im; }
 const portraitSmall = {};
 for (const k of [1, 2, 3, 4]) {
   const im = new Image(); im.src = PORTRAITS[k]; portraitImg[k] = im;
@@ -102,6 +111,8 @@ function strike(p, rect, pow, force, tag) {
     spark(cx, cy, force > 1.2);
     res.bits.forEach(([x, y, c]) => part({ x, y, vx: p.face * rnd(0.5, 2.5), vy: rnd(-2.5, -0.5), g: 0.15, life: rndi(20, 40), col: c, s: rndi(1, 2) }));
     if (res.removed > 0.5) bubbles(cx, cy, 3 + Math.min(6, res.removed / 6));
+    car.addFoam(cx, cy, force > 1.2 ? 4 : 2);
+    buzz(force > 1.2 ? 18 : 10);
     gain(p, res.removed, tag);
     Audio2.sfx(force > 1.2 ? 'hitBig' : 'hit');
     if (res.removed > 2) Audio2.sfx('scrub');
@@ -244,7 +255,7 @@ function hurtPlayer(p, from, kind) {
   p.vx = (p.x < from ? -1 : 1) * 1.8;
   if (!p.ground) p.vy = -1.5;
   pop(p.x, p.y - 72, '被弄髒了！', '#ffb070');
-  Audio2.sfx('hurt'); G.shake = 6;
+  Audio2.sfx('hurt'); G.shake = 6; buzz(60);
   R.hurt++;
 }
 
@@ -254,7 +265,7 @@ function startSuper(p) {
   p.meter = 0; p.st = 'super'; p.t = 0; p.inv = 999; p.mv = null;
   SUP = { t: 0, ch: p.ch, waveX: p.face > 0 ? car.left - 10 : car.right + 10, dir: p.face };
   if (!p.ground) { p.y = floorAt(p.x); p.ground = true; p.vy = 0; }
-  Audio2.sfx('superStart');
+  Audio2.sfx('superStart'); buzz(90);
   R.supers++;
 }
 function updateSuper() {
@@ -264,6 +275,7 @@ function updateSuper() {
   if (k < 52) {
     s.waveX += s.dir * (car.w + 30) / 52;
     const r = car.cleanRect(s.waveX - 6, car.y + car.h * 0.22, 12, car.h * 0.5, 0.45);   // 鍍膜帶：掃過車身中段
+    car.markCoat(s.waveX - 6, car.y + car.h * 0.22, 12, car.h * 0.5);
     if (r.removed > 0) { gain(P, r.removed); P.combo = Math.max(P.combo, k); }
     if (k % 4 === 0) { Audio2.sfx('hit'); car.hit(0.6); G.shake = 3; }
     for (let i = 0; i < 3; i++) twinkle(s.waveX + rnd(-8, 8), car.y + rnd(0, car.h), pick([s.ch.fx.main, '#ffffff', '#ff4040']));
@@ -278,7 +290,7 @@ function drawSuper() {
   if (s.t < 56) {
     const k = s.t;
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 0, W, H);
-    const bandY = 62, bandH = 76;
+    const bandY = 46, bandH = 124;
     const open = Math.min(1, k / 8);
     px(0, bandY + bandH / 2 - (bandH / 2) * open, W, bandH * open, '#b0101a');
     px(0, bandY + bandH / 2 - (bandH / 2) * open, W, 2, '#ffd040');
@@ -288,13 +300,12 @@ function drawSuper() {
       px(x, y, 30 + (i % 3) * 10, 1, 'rgba(255,220,220,.6)');
     }
     if (open >= 1) {
-      const im = portraitImg[s.ch.pIdx];
-      const ix = Math.min(36, -70 + k * 12);
-      px(ix - 2, bandY + 4, 68, 68, '#ffd040');
-      ctx.drawImage(im, ix, bandY + 6);
-      const tx = Math.max(118, W + 40 - k * 22);
-      text(SUPER_NAME, tx, bandY + 18, { s: 2, c: '#ffffff', o: '#300000', grad: ['#ffffff', '#ffd040'] });
-      text(s.ch.name + '　超必殺', tx, bandY + 48, { c: '#ffd040', o: '#300000' });
+      const ix = Math.min(20, -120 + k * 16);
+      ctx.drawImage(portraitBig[s.ch.pIdx], ix, bandY + 12);
+      const tx = Math.max(140, W + 40 - k * 22);
+      text(s.ch.name + '　超必殺', tx, bandY + 30, { c: '#ffd040', o: '#300000' });
+      text(SUPER_NAME, tx, bandY + 50, { s: 2, c: '#ffffff', o: '#300000', grad: ['#ffffff', '#ffd040'] });
+      text('掃過的地方會鍍上一層膜', tx, bandY + 86, { c: '#ffd0d0', o: '#300000' });
     }
   } else if (s.t - 56 < 52) {
     // 光波
@@ -322,6 +333,7 @@ function updateProjs() {
       Audio2.sfx('splash'); Audio2.sfx('hitBig');
       G.hitstop = 3; G.shake = q.id === 'leo' ? 6 : 3;
       burst(q.x, q.y, q.ch.fx.main, 14, 3); bubbles(q.x, q.y, 10);
+      car.addFoam(q.x, q.y, 7); buzz(22);
       r.bits.forEach(([x, y, c]) => part({ x, y, vx: rnd(-2, 2), vy: rnd(-3, -1), g: 0.15, life: 30, col: c, s: 2 }));
       q.pierce--; q.cd = 6;
       if (q.pierce <= 0) q.life = 0;
@@ -445,6 +457,7 @@ function drawParticles() {
     } else if (p.type === 'star') {
       const L = k > 0.5 ? 2 : 1;
       px(p.x - L, p.y, L * 2 + 1, 1, p.col); px(p.x, p.y - L, 1, L * 2 + 1, p.col);
+    } else if (p.type === 'rain') { px(p.x, p.y, 1, 4, '#9ac8ff');
     } else if (p.type === 'feather') { px(p.x, p.y, 2, 1, p.col); px(p.x + 1, p.y - 1, 1, 1, p.col); }
   }
 }
@@ -523,7 +536,7 @@ function drawHUD() {
   px(69, H - 12, Math.round(80 * m / 100), 6, m >= 100 ? (G.t % 10 < 5 ? '#ff2020' : '#ffd040') : '#d0202a');
   if (m >= 100) text('MAX！按「超」', 156, H - 15, { c: G.t % 20 < 10 ? '#ffd040' : '#ffffff', o: '#000' });
   // 連擊
-  if (P.combo >= 3 && G.scene === 'play') {
+  if (P.combo >= 3 && (G.scene === 'play' || G.scene === 'demo') && !SUP) {
     text(P.combo + ' HIT', 8, 44, { s: 2, c: '#ffd040', o: '#300', grad: ['#ffffff', '#ffb020'] });
     if (P.combo >= 10) text('連擊大爆發！', 8, 72, { c: '#ff8080', o: '#000' });
   }
@@ -553,6 +566,46 @@ function drawWorld() {
   drawPops();
 }
 
+// ---------- 里程碑與事件 ----------
+function banner(str, col = '#ffffff') { G.banner = { str, col, t: 0 }; }
+function checkMilestones() {
+  const cl = car.clean;
+  while (cl >= R.nextDing && R.nextDing < 0.97) {
+    Audio2.ding(Math.round(R.nextDing * 20));
+    for (let i = 0; i < 5; i++) { const q = car.randomCleanPixel(); if (q) twinkle(q[0], q[1], '#fff6a0'); }
+    R.nextDing += 0.05;
+  }
+  const M = [
+    [0.3, '車身露出原色了！', () => {}],
+    [0.6, '車燈亮起來了！', () => { car.lights = true; Audio2.sfx('lights'); }],
+    [0.85, '輪框閃閃發亮！', () => { car.rims = true; Audio2.sfx('sparkle'); }],
+  ];
+  for (const [th, msg, fn] of M) if (cl >= th && !R.ms[th]) { R.ms[th] = true; fn(); banner(msg, '#fff2a0'); }
+}
+function updateRain() {
+  if (stage.rain && R.time === stage.rain * 60) { R.rainT = 7 * 60; banner('下雨了！鍍膜過的地方不會留水斑', '#9ad8ff'); }
+  if (R.rainT > 0) {
+    R.rainT--;
+    if (R.rainT % 144 === 0 || R.rainT === 7 * 60 - 1) Audio2.sfx('rain');
+    for (let i = 0; i < 3; i++) part({ x: rnd(0, W + 40), y: rnd(-10, 40), vx: -1.2, vy: 6, life: 40, type: 'rain' });
+    if (R.rainT % 5 === 0) {
+      const r = car.rainSpot();
+      if (r && r.coated) { burst(r.x, r.y, '#bfe8ff', 3, 1); if (G.t - (R.popT || 0) > 50) { R.popT = G.t; pop(r.x, r.y - 6, '鍍膜彈開！', '#bfe8ff'); } }
+    }
+  }
+}
+function drawBanner() {
+  const b = G.banner;
+  if (!b) return;
+  b.t++;
+  if (b.t > 110) { G.banner = null; return; }
+  const x = W / 2 + (b.t < 10 ? (10 - b.t) * 30 : b.t > 100 ? -(b.t - 100) * 30 : 0);
+  const w = textW(b.str) + 24;
+  ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(Math.round(x - w / 2), 36, Math.round(w), 16);
+  px(x - w / 2, 36, w, 1, '#ff4040'); px(x - w / 2, 51, w, 1, '#ff4040');
+  text(b.str, x, 38, { c: b.col, a: 'c', o: '#000' });
+}
+
 function setupStage(i) {
   G.stageIdx = i; stage = STAGES[i];
   car = new Car(stage.car, stage.dirt);
@@ -560,9 +613,69 @@ function setupStage(i) {
   const meter = P ? P.meter : 0;
   P = newPlayer(CHARS[G.chIdx]); P.meter = meter;
   projs = []; blobs = []; birds = []; poops = []; parts = []; pops = []; decals = [];
-  R = { time: stage.time * 60, cleanPts: 0, bonus: 0, maxCombo: 0, birds: 0, blobs: 0, hurt: 0, supers: 0, blobT: 60 * 3, birdT: 60 * 2.5, perfect: false };
+  R = { time: stage.time * 60, cleanPts: 0, bonus: 0, maxCombo: 0, birds: 0, blobs: 0, hurt: 0, supers: 0, blobT: 60 * 3, birdT: 60 * 2.5, perfect: false, nextDing: 0.05, ms: {}, rainT: 0 };
+  G.banner = null;
   SUP = null; G.flash = 0;
 }
+
+// ---------- 一格遊戲邏輯（正式遊玩與示範共用） ----------
+function tickPlay() {
+      if (G.flash > 0) G.flash--;
+      if (SUP) { updateSuper(); updateParticles(); car.update(); return; }
+      if (G.hitstop > 0) { G.hitstop--; updateParticles(); return; }
+      R.time--;
+      if (R.time === 600) Audio2.play('hurry');
+      if (R.time <= 600 && R.time > 0 && R.time % 60 === 0) Audio2.sfx('timeTick');
+      updatePlayer(P);
+      updateProjs(); updateBlobs(); updateBirds(); updatePoops(); updateParticles();
+      car.update(); checkMilestones(); updateRain();
+      decals.forEach(d => d.life--); decals = decals.filter(d => d.life > 0);
+      if (--R.blobT <= 0) { if (blobs.length < stage.blobMax) spawnBlob(); R.blobT = Math.round(stage.blobEvery * 60 * rnd(0.8, 1.2)); }
+      if (stage.birdEvery && --R.birdT <= 0) { if (birds.filter(b => b.st === 'fly').length < 2) spawnBird(); R.birdT = Math.round(stage.birdEvery * 60 * rnd(0.8, 1.2)); }
+      // 乾淨處閃亮
+      if (Math.random() < car.clean * 0.35) { const q = car.randomCleanPixel(); if (q) twinkle(q[0], q[1]); }
+      if (car.clean >= 0.97) return 'perfect';
+      if (R.time <= 0) return 'timeup';
+      return '';
+}
+function drawPlay() {
+      ctx.save();
+      if (G.shake > 0) { G.shake--; ctx.translate(rndi(-2, 2), rndi(-1, 1)); }
+      drawWorld();
+      if (R.rainT > 0) { ctx.fillStyle = 'rgba(20,30,60,.22)'; ctx.fillRect(0, 0, W, H); }
+      ctx.restore();
+      if (SUP) drawSuper();
+      if (G.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${G.flash / 14})`; ctx.fillRect(0, 0, W, H); }
+      drawHUD();
+      if (!SUP) drawBanner();
+}
+
+// ---------- 暫停選單 ----------
+const PAUSE_ITEMS = () => ['繼續', '重新開始這一關', '回到標題', '聲音：' + (Audio2.muted ? '關' : '開')];
+function pauseMenu() {
+  const I = Input.pressed, n = PAUSE_ITEMS().length;
+  if (I.up) { G.pi = (G.pi + n - 1) % n; Audio2.sfx('blip'); }
+  if (I.down) { G.pi = (G.pi + 1) % n; Audio2.sfx('blip'); }
+  if (I.pause) { G.paused = false; return; }
+  if (I.p || I.start) {
+    Audio2.sfx('confirm');
+    if (G.pi === 0) G.paused = false;
+    else if (G.pi === 1) { G.paused = false; const m = P.meter; setupStage(G.stageIdx); P.meter = m; go('intro'); }
+    else if (G.pi === 2) { G.paused = false; Audio2.stop(); go('title'); }
+    else Audio2.toggleMute();
+  }
+}
+function drawPause() {
+  ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fillRect(0, 0, W, H);
+  text('PAUSE', W / 2, 46, { s: 3, c: '#ffd040', a: 'c', o: '#000', grad: ['#ffffff', '#ffb020'] });
+  PAUSE_ITEMS().forEach((it, i) => {
+    const on = i === G.pi;
+    if (on) px(W / 2 - 70, 98 + i * 20, 140, 16, '#8a0010');
+    text((on ? '▶ ' : '　') + it, W / 2, 100 + i * 20, { c: on ? '#ffffff' : '#a0a0b0', a: 'c', o: '#000' });
+  });
+  text(isTouch ? '搖桿上下選擇，按「拳」確定' : '↑↓ 選擇，J 或 Enter 確定', W / 2, 186, { c: '#9ad8ff', a: 'c', o: '#000' });
+}
+
 
 const SCENES = {
   boot: {
@@ -573,7 +686,8 @@ const SCENES = {
   title: {
     enter() { Audio2.play('title'); },
     update() {
-      if (Input.pressed.start || Input.pressed.p || Input.pressed.k) { Audio2.unlock(); Audio2.sfx('confirm'); go('select'); }
+      if (Input.pressed.start || Input.pressed.p || Input.pressed.k) { Audio2.unlock(); Audio2.sfx('confirm'); go('select'); return; }
+      if (G.st > 60 * 9) { G.rankHi = -1; go('ranking'); }
     },
     draw() {
       px(0, 0, W, H, '#0a0006');
@@ -683,42 +797,17 @@ const SCENES = {
   },
 
   play: {
-    enter() {},
+    enter() { G.paused = false; },
     update() {
-      if (Input.pressed.pause || (Input.pressed.start && isTouch)) { G.paused = !G.paused; Audio2.sfx('blip'); }
-      if (G.paused) return;
-      if (G.flash > 0) G.flash--;
-      if (SUP) { updateSuper(); updateParticles(); car.update(); return; }
-      if (G.hitstop > 0) { G.hitstop--; updateParticles(); return; }
-      R.time--;
-      if (R.time === 600) Audio2.play('hurry');
-      if (R.time <= 600 && R.time > 0 && R.time % 60 === 0) Audio2.sfx('timeTick');
-      updatePlayer(P);
-      updateProjs(); updateBlobs(); updateBirds(); updatePoops(); updateParticles();
-      car.update();
-      decals.forEach(d => d.life--); decals = decals.filter(d => d.life > 0);
-      if (--R.blobT <= 0) { if (blobs.length < stage.blobMax) spawnBlob(); R.blobT = Math.round(stage.blobEvery * 60 * rnd(0.8, 1.2)); }
-      if (stage.birdEvery && --R.birdT <= 0) { if (birds.filter(b => b.st === 'fly').length < 2) spawnBird(); R.birdT = Math.round(stage.birdEvery * 60 * rnd(0.8, 1.2)); }
-      // 乾淨處閃亮
-      if (Math.random() < car.clean * 0.35) { const q = car.randomCleanPixel(); if (q) twinkle(q[0], q[1]); }
-      if (car.clean >= 0.97) { R.perfect = true; go('finish'); }
-      else if (R.time <= 0) go('finish');
+      if (G.paused) { pauseMenu(); return; }
+      if (Input.pressed.pause || (Input.pressed.start && isTouch)) { G.paused = true; G.pi = 0; Audio2.sfx('blip'); return; }
+      const st = tickPlay();
+      if (st === 'perfect') { R.perfect = true; go('finish'); }
+      else if (st === 'timeup') go('finish');
     },
-    draw() {
-      ctx.save();
-      if (G.shake > 0) { G.shake--; ctx.translate(rndi(-2, 2), rndi(-1, 1)); }
-      drawWorld();
-      ctx.restore();
-      if (SUP) drawSuper();
-      if (G.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${G.flash / 14})`; ctx.fillRect(0, 0, W, H); }
-      drawHUD();
-      if (G.paused) {
-        ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, W, H);
-        text('PAUSE', W / 2, 80, { s: 3, c: '#ffd040', a: 'c', o: '#000' });
-        text(isTouch ? '按 START 繼續' : '按 ESC 繼續', W / 2, 124, { c: '#fff', a: 'c', o: '#000' });
-      }
-    },
+    draw() { drawPlay(); if (G.paused) drawPause(); },
   },
+
 
   finish: {
     enter() {
@@ -813,16 +902,104 @@ const SCENES = {
     },
   },
 
+  demo: {
+    enter() {
+      G.demo = true; Audio2.quiet = true; Audio2.stop();
+      this.prevCh = G.chIdx; G.chIdx = rndi(0, 3); P = null;
+      setupStage(rndi(0, 2)); P.meter = 60;
+      G.ai = { target: P.x, f: 0 };
+    },
+    exit(to) {
+      G.demo = false; Audio2.quiet = false; Input.ai = {}; G.chIdx = this.prevCh; G.paused = false;
+      go(to);
+    },
+    update() {
+      if (Input.realPressed) { this.exit('title'); return; }
+      aiThink();
+      const st = tickPlay();
+      if (st || G.st > 60 * 24) this.exit('title');
+    },
+    draw() {
+      drawPlay();
+      if (G.t % 60 < 40) text('DEMO PLAY', W / 2, 60, { s: 2, c: '#ffffff', a: 'c', o: '#000', grad: ['#ffffff', '#ff8a10'] });
+      text(isTouch ? '點一下畫面開始' : 'PRESS ENTER', W / 2, 88, { c: '#ffd040', a: 'c', o: '#000' });
+    },
+  },
+
+  ranking: {
+    enter() { if (G.rankHi < 0) Audio2.play('title'); },
+    update() {
+      if (Input.realPressed && G.st > 20) { go('title'); return; }
+      if (G.st > 60 * (G.rankHi >= 0 ? 10 : 6)) go(G.rankHi >= 0 ? 'title' : 'demo');
+    },
+    draw() {
+      px(0, 0, W, H, '#0a0006');
+      for (let y = 0; y < H; y += 6) px(0, y + (G.t >> 2) % 6, W, 2, '#160008');
+      text('TOP 5　亮車王', W / 2, 14, { s: 2, c: '#ffd040', a: 'c', o: '#300', grad: ['#ffffff', '#ffb020'] });
+      text('RANK', 52, 52, { c: '#ff8080' }); text('NAME', 136, 52, { c: '#ff8080' }); text('SCORE', 330, 52, { c: '#ff8080', a: 'r' });
+      BOARD.forEach(([n, sc, ci], i) => {
+        const y = 72 + i * 24, on = i === G.rankHi;
+        if (on && G.t % 20 < 10) return;
+        const col = on ? '#ffffff' : i === 0 ? '#ffd040' : '#d8d8e0';
+        text(['1ST', '2ND', '3RD', '4TH', '5TH'][i], 52, y, { c: col, o: '#000' });
+        if (portraitSmall[CHARS[ci || 0].pIdx]) ctx.drawImage(portraitSmall[CHARS[ci || 0].pIdx], 96, y - 8);
+        text(n, 136, y, { s: 1, c: col, o: '#000' });
+        text(String(sc).padStart(7, '0'), 330, y, { c: col, a: 'r', o: '#000' });
+      });
+    },
+  },
+
+  entry: {
+    enter() {
+      this.name = [0, 0, 0]; this.pos = 0; this.done = 0;
+      Audio2.play('result');
+    },
+    update() {
+      const I = Input.pressed, L = NAME_CHARS.length;
+      if (this.done) { if (++this.done > 50) go('ranking'); return; }
+      if (I.up || I.right) { this.name[this.pos] = (this.name[this.pos] + 1) % L; Audio2.sfx('letter'); }
+      if (I.down || I.left) { this.name[this.pos] = (this.name[this.pos] + L - 1) % L; Audio2.sfx('letter'); }
+      if (I.k && this.pos > 0) { this.pos--; Audio2.sfx('blip'); }
+      if (I.p || I.start) {
+        Audio2.sfx('confirm');
+        if (++this.pos >= 3) {
+          const n = this.name.map(i => NAME_CHARS[i]).join('');
+          BOARD.push([n, G.total, G.chIdx]);
+          BOARD.sort((a, b) => b[1] - a[1]); BOARD = BOARD.slice(0, 5);
+          G.rankHi = BOARD.findIndex(r => r[0] === n && r[1] === G.total);
+          Store.set('board', BOARD); Store.set('hi', BOARD[0][1]); G.hi = BOARD[0][1];
+          this.done = 1;
+        }
+      }
+    },
+    draw() {
+      px(0, 0, W, H, '#0a0006');
+      text('恭喜上榜！請輸入名字', W / 2, 20, { c: '#ffd040', a: 'c', o: '#000' });
+      text('總分 ' + String(G.total).padStart(7, '0'), W / 2, 40, { s: 2, c: '#ffffff', a: 'c', o: '#000' });
+      ctx.drawImage(portraitImg[CHARS[G.chIdx].pIdx], 40, 84);
+      for (let i = 0; i < 3; i++) {
+        const x = 170 + i * 44, on = i === this.pos && !this.done;
+        px(x - 2, 80, 36, 44, on && G.t % 20 < 12 ? '#ff3030' : '#2a2a36');
+        px(x, 82, 32, 40, '#000');
+        text(i <= this.pos || this.done ? NAME_CHARS[this.name[i]] : '_', x + 16, 88, { s: 3, c: '#ffffff', a: 'c' });
+      }
+      text(isTouch ? '搖桿上下換字，拳確定，腳退回' : '↑↓ 換字，J 確定，K 退回', W / 2, 150, { c: '#9ad8ff', a: 'c', o: '#000' });
+    },
+  },
+
   ending: {
     enter() {
       Audio2.play('ending');
       this.newHi = G.total > G.hi;
-      if (this.newHi) { G.hi = G.total; Store.set('hi', G.hi); }
+      if (this.newHi) G.hi = G.total;
     },
     update() {
       if (G.st % 6 === 0) part({ x: rnd(0, W), y: -4, vy: rnd(0.4, 1), life: 260, type: 'star', col: pick(['#ffd040', '#ffffff', '#ff6060']) });
       updateParticles();
-      if (G.st > 240 && (Input.pressed.start || Input.pressed.p || Input.pressed.k)) { Audio2.sfx('confirm'); go('title'); }
+      if (G.st > 240 && (Input.pressed.start || Input.pressed.p || Input.pressed.k)) {
+        Audio2.sfx('confirm');
+        if (G.total > BOARD[BOARD.length - 1][1]) go('entry'); else { G.rankHi = -1; go('ranking'); }
+      }
     },
     draw() {
       px(0, 0, W, H, '#08000a');
@@ -833,8 +1010,9 @@ const SCENES = {
       }
       drawParticles();
       const ch = CHARS[G.chIdx];
-      const s = getSprite(ch, 'win' + (Math.floor(G.t / 16) % 2)).c;
-      ctx.drawImage(s, 0, 0, SPR_W, SPR_H, 90 - OX * 2, 206 - OY * 2, SPR_W * 2, SPR_H * 2);
+      px(22, 22, 116, 116, '#ffd040'); px(24, 24, 112, 112, '#3a0010');
+      ctx.drawImage(portraitBig[ch.pIdx], 24, 24);
+      drawChar(ch, 'win' + (Math.floor(G.t / 16) % 2), 80, 206, 1);
       const lines = [
         ['三台車全部打亮！', '#ffd040', 2],
         [ch.name + '：「' + QUOTES[ch.id][0], '#ffffff', 1],
@@ -857,6 +1035,36 @@ const SCENES = {
     },
   },
 };
+
+const NAME_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-';
+
+// 示範模式的電腦玩家：找最髒的那一段車身過去打
+function aiThink() {
+  const K = Input.ai, A = G.ai;
+  for (const k in K) K[k] = false;
+  A.f++;
+  if (A.f % 2 === 0) return;               // 隔一格放開按鍵，才會產生「按下」
+  if (A.f % 45 === 1) {
+    let best = -1;
+    for (let x = 0; x < car.w; x += 8) {
+      let sum = 0;
+      for (let y = 0; y < car.h; y += 2) for (let dx = 0; dx < 8 && x + dx < car.w; dx += 2) sum += car.amt[y * car.w + x + dx];
+      if (sum > best) { best = sum; A.target = car.x + x + 4; }
+    }
+  }
+  const free = P.st === 'idle' || P.st === 'walk' || P.st === 'crouch';
+  const near = blobs.find(b => Math.abs(b.x - P.x) < 28);
+  if (free) {
+    if (P.meter >= 100) K.sup = true;
+    else if (near) { P.face = near.x > P.x ? 1 : -1; K.down = true; K.k = true; }
+    else if (Math.abs(P.x - A.target) > 12) K[P.x < A.target ? 'right' : 'left'] = true;
+    else {
+      const r = Math.random();
+      if (r < 0.28) K.p = true; else if (r < 0.5) K.k = true; else if (r < 0.64) { K.down = true; K.k = true; }
+      else if (r < 0.74) { K.down = true; K.p = true; } else if (r < 0.86) K.up = true; else if (r < 0.94) K.s1 = true; else K.s2 = true;
+    }
+  } else if (P.st === 'jump' && !P.mv && P.vy > -2) K.k = true;
+}
 
 // 靜音鍵
 addEventListener('keydown', e => { if (e.code === 'KeyM') Audio2.toggleMute(); });

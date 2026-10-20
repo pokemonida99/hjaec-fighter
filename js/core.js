@@ -106,13 +106,16 @@ const KEYMAP = {
 };
 const BTNS = ['left', 'right', 'up', 'down', 'p', 'k', 's1', 's2', 'sup', 'start', 'pause'];
 const Input = {
-  key: {}, touch: {}, pad: {}, held: {}, prev: {}, pressed: {}, hist: [], frame: 0, anyPressed: false,
+  key: {}, touch: {}, pad: {}, ai: {}, held: {}, prev: {}, realPrev: {}, pressed: {}, hist: [], frame: 0, anyPressed: false, realPressed: false,
   update() {
     this.frame++;
     this.pollPad();
-    this.anyPressed = false;
+    this.anyPressed = false; this.realPressed = false;
     for (const b of BTNS) {
-      const h = !!(this.key[b] || this.touch[b] || this.pad[b]);
+      const real = !!(this.key[b] || this.touch[b] || this.pad[b]);
+      if (real && !this.realPrev[b]) this.realPressed = true;    // 真人按鍵（示範模式用來跳出）
+      this.realPrev[b] = real;
+      const h = real || !!this.ai[b];
       this.pressed[b] = h && !this.prev[b];
       if (this.pressed[b]) {
         this.anyPressed = true;
@@ -192,6 +195,9 @@ if (isTouch) document.body.classList.add('touch');
   document.addEventListener('touchend', () => Audio2.unlock(), { passive: true });
   document.addEventListener('click', () => Audio2.unlock());
 })();
+
+// 手機震動（Android 有效，iPhone 會略過）
+function buzz(ms) { if (isTouch && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) { /* 不支援 */ } }
 
 // 畫面縮放：盡量整數倍，保持像素銳利
 function fit() {

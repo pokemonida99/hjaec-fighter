@@ -16,7 +16,7 @@ const STAGES = [
   {
     key: 'night', car: 'sports', title: 'FINAL ROUND', sub: '頂級鍍膜決戰', time: 50,
     dirt: { dust: 0.8, mud: 1.3, spots: 25, film: 1.1, tar: 26, poop: 4 },
-    blobEvery: 5, blobMax: 3, birdEvery: 4.2,
+    blobEvery: 5, blobMax: 3, birdEvery: 4.2, rain: 24,   // 剩 24 秒時下雨
     products: [['全能去污還原膏', '#3ac060'], ['奈米陶瓷封體鍍膜', '#e02a2a']],
   },
 ];

@@ -1,3 +1,4 @@
 # 原始角色設定圖只留本機（遊戲只用縮成像素的頭像 js/portraits.js）
 assets/sheet*.jpg
 .DS_Store
+work/

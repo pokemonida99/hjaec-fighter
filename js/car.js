@@ -234,6 +234,40 @@ class Car {
     g.putImageData(id, 0, 0);
     this.maskC = c;
     [this.shineC, this.shineG] = mkCanvas(w, h);
+    this.foam = []; this.lights = false; this.rims = false; this.flash = 0;
+    this.coat = new Uint8Array(w * h);   // 被超必殺鍍膜過的像素（下雨不留水斑）
+    const avg = pts => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+    this.headPos = avg(this.T.head); this.tailPos = avg(this.T.tail);
+  }
+  // 泡沫：打到的地方留一小團，會慢慢往下滑、消失
+  addFoam(wx, wy, n = 3) {
+    for (let i = 0; i < n; i++) {
+      const lx = Math.round(wx - this.x + rnd(-6, 6)), ly = Math.round(wy - this.y + rnd(-5, 5));
+      if (lx < 0 || ly < 0 || lx >= this.w || ly >= this.h || !this.part[ly * this.w + lx]) continue;
+      this.foam.push({ x: lx, y: ly, r: rndi(1, 3), life: rndi(70, 130), t: 0 });
+    }
+    if (this.foam.length > 140) this.foam.splice(0, this.foam.length - 140);
+  }
+  markCoat(wx, wy, ww, wh) {
+    const x0 = Math.max(0, Math.floor(wx - this.x)), x1 = Math.min(this.w - 1, Math.ceil(wx + ww - this.x));
+    const y0 = Math.max(0, Math.floor(wy - this.y)), y1 = Math.min(this.h - 1, Math.ceil(wy + wh - this.y));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.coat[y * this.w + x] = 1;
+  }
+  // 下雨：沒鍍膜的車身會留下水斑
+  rainSpot() {
+    for (let t = 0; t < 8; t++) {
+      const cx = rndi(3, this.w - 4), cy = rndi(3, Math.floor(this.h * 0.75)), i = cy * this.w + cx;
+      if (this.part[i] !== P_BODY) continue;
+      if (this.coat[i]) return { coated: true, x: this.x + cx, y: this.y + cy };
+      const r = rnd(1.4, 2.4);
+      for (let y = cy - 3; y <= cy + 3; y++) for (let x = cx - 3; x <= cx + 3; x++) {
+        const dd = Math.hypot(x - cx, y - cy);
+        if (dd <= r + 0.5 && dd >= r - 0.8 && !this.coat[y * this.w + x]) this.setDirt(x, y, D_SPOT, 0.9, P_BODY);
+      }
+      this.dirtDirty = true;
+      return { coated: false, x: this.x + cx, y: this.y + cy };
+    }
+    return null;
   }
 
   get clean() { return clamp(1 - this.remain / this.total0, 0, 1); }
@@ -325,6 +359,9 @@ class Car {
     this.bv += -this.bounce * 0.25; this.bv *= 0.78; this.bounce += this.bv;
     if (this.shake > 0) this.shake--;
     if (this.shine > 0) this.shine++;
+    if (this.flash > 0) this.flash--;
+    for (const f of this.foam) { f.t++; if (f.t % 9 === 0) f.y += 1; }
+    this.foam = this.foam.filter(f => f.t < f.life && f.y < this.h);
   }
 
   redrawDirt() {
@@ -375,6 +412,30 @@ class Car {
       g.beginPath(); g.moveTo(p, 0); g.lineTo(p + 10, 0); g.lineTo(p - 10, this.h); g.lineTo(p - 20, this.h); g.fill();
       g.beginPath(); g.moveTo(p + 16, 0); g.lineTo(p + 19, 0); g.lineTo(p - 1, this.h); g.lineTo(p - 4, this.h); g.fill();
       ctx.drawImage(this.shineC, x, y);
+    }
+    // 泡沫
+    for (const f of this.foam) {
+      const k = Math.min(1, (f.life - f.t) / 30);
+      ctx.globalAlpha = 0.85 * k;
+      disc(x + f.x, y + f.y, f.r, '#e8f6ff');
+      px(x + f.x - f.r + 1, y + f.y - f.r + 1, 1, 1, '#ffffff');
+      if (f.r > 1) px(x + f.x + 1, y + f.y + f.r - 1, f.r, 1, '#a8d4f0');
+    }
+    ctx.globalAlpha = 1;
+    // 車燈
+    const on = this.lights && !(this.flash > 0 && (this.flash >> 3) % 2);
+    if (on) {
+      const [hx, hy] = this.headPos, [tx, ty] = this.tailPos;
+      ctx.fillStyle = 'rgba(255,240,170,.13)';
+      ctx.beginPath(); ctx.moveTo(x + hx, y + hy - 2); ctx.lineTo(x + hx, y + hy + 2);
+      ctx.lineTo(x + hx - 70, GY + 2); ctx.lineTo(x + hx - 70, y + hy - 10); ctx.fill();
+      ctx.globalAlpha = 0.55; disc(x + hx, y + hy, 4, '#fff6c0'); disc(x + tx, y + ty, 3, '#ff3030'); ctx.globalAlpha = 1;
+      disc(x + hx, y + hy, 2, '#ffffff');
+    }
+    // 輪框閃光
+    if (this.rims) for (const [wx, wy, wr] of this.T.wheels) {
+      const a = t * 0.12, gx = x + wx + Math.cos(a) * wr * 0.4, gy = y + wy + Math.sin(a) * wr * 0.4;
+      px(gx - 1, gy, 3, 1, '#ffffff'); px(gx, gy - 1, 1, 3, '#ffffff');
     }
   }
 }

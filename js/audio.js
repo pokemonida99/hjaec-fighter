@@ -4,6 +4,7 @@ const Audio2 = (() => {
   let ac = null, master, sfxBus, musBus, noiseBuf, unlocked = false;
   let song = null, step = 0, nextT = 0, timer = null;
   const muted = { v: Store.get('mute', false) };
+  let quiet = false;   // 示範模式不出聲
 
   function init() {
     if (ac) return;
@@ -95,6 +96,10 @@ const Audio2 = (() => {
     ready() { tone('pulse', 440, 440, 0.25, 0.2); },
     go() { const t = ac.currentTime; tone('pulse', 523, 523, 0.1, 0.22, sfxBus, t); tone('pulse', 784, 784, 0.35, 0.22, sfxBus, t + 0.1); noise(0.4, 0.3, 'highpass', 3000, 6000, sfxBus, t); },
     stamp() { tone('sine', 110, 40, 0.35, 1); noise(0.2, 0.6, 'lowpass', 2500, 200); },
+    honk() { const t = ac.currentTime; tone('square', 370, 370, 0.16, 0.16, sfxBus, t); tone('square', 466, 466, 0.16, 0.12, sfxBus, t); tone('square', 370, 370, 0.32, 0.16, sfxBus, t + 0.2); tone('square', 466, 466, 0.32, 0.12, sfxBus, t + 0.2); },
+    lights() { const t = ac.currentTime; tone('square', 1200, 1200, 0.04, 0.12, sfxBus, t); tone('square', 1600, 1600, 0.06, 0.12, sfxBus, t + 0.06); },
+    rain() { noise(2.5, 0.25, 'highpass', 3000, 5000); },
+    letter() { tone('pulse', 1200, 1200, 0.04, 0.15); },
   };
 
   // ---------- 配樂：簡易步進音序器 ----------
@@ -186,11 +191,12 @@ const Audio2 = (() => {
     if (!timer) timer = setInterval(schedule, 30);
   }
   function stop() { song = null; }
-  function sfx(name) { if (ok() && SFX[name]) try { SFX[name](); } catch (e) { console.warn('sfx', name, e); } }
+  function ding(level) { if (!ok() || quiet) return; const f = 880 * Math.pow(2, Math.min(level, 19) / 12); tone('triangle', f, f, 0.18, 0.16); tone('triangle', f * 2, f * 2, 0.12, 0.06, sfxBus, ac.currentTime + 0.04); }
+  function sfx(name) { if (quiet) return; if (ok() && SFX[name]) try { SFX[name](); } catch (e) { console.warn('sfx', name, e); } }
   function toggleMute() {
     muted.v = !muted.v; Store.set('mute', muted.v);
     if (master) master.gain.value = muted.v ? 0 : 0.8;
     return muted.v;
   }
-  return { unlock, play, stop, sfx, toggleMute, get muted() { return muted.v; } };
+  return { unlock, play, stop, sfx, ding, toggleMute, get muted() { return muted.v; }, set quiet(v) { quiet = v; if (musBus) musBus.gain.value = v ? 0 : 0.22; } };
 })();
