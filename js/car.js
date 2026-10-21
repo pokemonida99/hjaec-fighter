@@ -78,9 +78,22 @@ function makeNoise(seed) {
   };
 }
 
+// GPT 畫的車子圖（tools/stage_art.py 產生 CAR_ART）
+const CAR_IMG = {};
+const CARS_READY = Promise.all(Object.entries(window.CAR_ART || {}).map(([k, u]) => new Promise(res => {
+  const im = new Image();
+  im.onload = () => {
+    const [c, g] = mkCanvas(im.width, im.height); g.drawImage(im, 0, 0);
+    CAR_IMG[k] = { c, data: g.getImageData(0, 0, im.width, im.height) }; res();
+  };
+  im.onerror = () => res();
+  im.src = u;
+})));
+
 class Car {
   constructor(typeKey, dirtCfg) {
     const T = this.T = CAR_TYPES[typeKey];
+    if (CAR_IMG[typeKey]) { this.fromImage(CAR_IMG[typeKey], dirtCfg); return; }
     const w = this.w = T.w, h = this.h = T.h;
     this.x = W - w - 46;
     this.y = GY - h;
@@ -117,6 +130,45 @@ class Car {
     this.buildBase();
     this.buildDirt(dirtCfg || {});
     this.buildMaskCanvas();
+    this.wheels = T.wheels;
+  }
+
+  // 從圖片建車：用顏色判斷玻璃、輪胎，再找輪子與車燈位置
+  fromImage(art, dirtCfg) {
+    const w = this.w = art.c.width, h = this.h = art.c.height, d = art.data.data;
+    this.x = W - w - 30; this.y = GY - h;
+    this.bounce = 0; this.bv = 0; this.shake = 0; this.shine = 0;
+    const part = this.part = new Uint8Array(w * h);
+    const tires = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, o = i * 4;
+      if (d[o + 3] < 128) continue;
+      const r = d[o], g = d[o + 1], b = d[o + 2], lum = 0.3 * r + 0.59 * g + 0.11 * b, fy = y / h;
+      const sat = Math.max(r, g, b) - Math.min(r, g, b);
+      if (fy < 0.62 && b > r + 8 && b >= g - 6 && lum < 190) part[i] = P_GLASS;
+      else if (fy > 0.55 && lum < 52 && sat < 32) { part[i] = P_TIRE; if (fy > 0.7) tires.push([x, y]); }
+      else part[i] = P_BODY;
+    }
+    this.top = new Int16Array(w);
+    for (let x = 0; x < w; x++) { let t = h; for (let y = 0; y < h; y++) if (part[y * w + x]) { t = y; break; } this.top[x] = t; }
+    // 輪子：下方的深色像素分左右兩群
+    const wr = Math.round(h * 0.2);
+    this.wheels = [0, 1].map(k => {
+      const g = tires.filter(([x]) => k ? x >= w / 2 : x < w / 2).map(([x]) => x).sort((a, b) => a - b);
+      const cx = g.length ? g[g.length >> 1] : (k ? w * 0.78 : w * 0.2);
+      return [cx, h - wr - 1, wr];
+    });
+    // 車燈：左邊最亮的黃白色、右邊最紅的點
+    let hb = -1, tb = -1; this.headPos = [4, h * 0.5]; this.tailPos = [w - 4, h * 0.45];
+    for (let y = Math.floor(h * 0.25); y < h * 0.8; y++) for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4; if (d[o + 3] < 128) continue;
+      const r = d[o], g = d[o + 1], b = d[o + 2];
+      if (x < w * 0.16 && r > 200 && g > 170 && r + g + b > hb) { hb = r + g + b; this.headPos = [x, y]; }
+      if (x > w * 0.84 && r > 170 && g < 110 && r - g > tb) { tb = r - g; this.tailPos = [x, y]; }
+    }
+    this.base = art.c; this.baseData = art.data;
+    this.buildDirt(dirtCfg || {});
+    this.buildMaskCanvas(true);
   }
 
   buildBase() {
@@ -226,7 +278,7 @@ class Car {
     this.dirtDirty = true;
     if (!quiet) { this.bv -= 0.6; }
   }
-  buildMaskCanvas() {
+  buildMaskCanvas(fromImage) {
     const { w, h, part } = this;
     const [c, g] = mkCanvas(w, h);
     const id = g.createImageData(w, h);
@@ -237,7 +289,7 @@ class Car {
     this.foam = []; this.lights = false; this.rims = false; this.flash = 0;
     this.coat = new Uint8Array(w * h);   // 被超必殺鍍膜過的像素（下雨不留水斑）
     const avg = pts => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
-    this.headPos = avg(this.T.head); this.tailPos = avg(this.T.tail);
+    if (!fromImage) { this.headPos = avg(this.T.head); this.tailPos = avg(this.T.tail); }
   }
   // 泡沫：打到的地方留一小團，會慢慢往下滑、消失
   addFoam(wx, wy, n = 3) {
@@ -365,16 +417,24 @@ class Car {
   }
 
   redrawDirt() {
-    const { w, h } = this, d = this.dirtImg.data;
+    // 髒污跟車子原本的明暗混在一起：保留車身輪廓與反光，看起來像真的弄髒
+    const { w, h } = this, d = this.dirtImg.data, bd = this.baseData.data;
+    if (!this.grain) { this.grain = new Float32Array(w * h); for (let i = 0; i < w * h; i++) this.grain[i] = 0.82 + Math.random() * 0.3; }
     for (let i = 0; i < w * h; i++) {
       const a = this.amt[i], o = i * 4;
       if (a <= 0) { d[o + 3] = 0; continue; }
-      const x = i % w, y = (i / w) | 0;
-      const lv = a < 0.35 ? 0 : a < 0.8 ? 1 : 2;
-      if (lv === 0 && (x + y) & 1) { d[o + 3] = 0; continue; }
-      const rgb = DIRT[this.kind[i]].rgb[this.kind[i] === D_SPOT || this.kind[i] === D_POOP ? lv : 2 - lv];
-      d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2];
-      d[o + 3] = lv === 0 ? 170 : lv === 1 ? 215 : 255;
+      const k = this.kind[i], br = bd[o], bg = bd[o + 1], bb = bd[o + 2];
+      const lum = (0.3 * br + 0.59 * bg + 0.11 * bb) / 255;
+      const dc = DIRT[k].rgb[k === D_SPOT || k === D_POOP ? 1 : a > 0.9 ? 2 : 1], gr = this.grain[i];
+      // 亮處髒污也比較亮，暗處（輪廓線）比較少被蓋掉
+      const shadeK = (0.55 + 0.7 * lum) * gr;
+      let al = Math.min(0.93, 0.36 + a * 0.62);
+      if (k === D_SPOT || k === D_POOP) al = Math.min(0.95, 0.4 + a * 0.5);
+      if (lum < 0.12 && k !== D_MUD && k !== D_TAR) al *= 0.45;
+      d[o] = clamp(br * (1 - al) + dc[0] * shadeK * al, 0, 255);
+      d[o + 1] = clamp(bg * (1 - al) + dc[1] * shadeK * al, 0, 255);
+      d[o + 2] = clamp(bb * (1 - al) + dc[2] * shadeK * al, 0, 255);
+      d[o + 3] = 255;
     }
     this.dirtG.putImageData(this.dirtImg, 0, 0);
     this.dirtDirty = false;
@@ -433,7 +493,7 @@ class Car {
       disc(x + hx, y + hy, 2, '#ffffff');
     }
     // 輪框閃光
-    if (this.rims) for (const [wx, wy, wr] of this.T.wheels) {
+    if (this.rims) for (const [wx, wy, wr] of this.wheels) {
       const a = t * 0.12, gx = x + wx + Math.cos(a) * wr * 0.4, gy = y + wy + Math.sin(a) * wr * 0.4;
       px(gx - 1, gy, 3, 1, '#ffffff'); px(gx, gy - 1, 1, 3, '#ffffff');
     }

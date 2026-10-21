@@ -3,6 +3,7 @@
 const STAGES = [
   {
     key: 'garage', car: 'sedan', title: 'ROUND 1', sub: '預洗開打！', time: 45,
+    signs: [[195, 29, '紅分子', { s: 2, c: '#ff3a3a', o: '#3a0000' }], [195, 66, 'HJAEC 汽車美容', { c: '#ffffff', o: '#5a0000' }]],
     dirt: { dust: 0.6, mud: 1.1, spots: 18, film: 0.5 },
     blobEvery: 8, blobMax: 1, birdEvery: 0,
     products: [['超效除汙高泡濃縮洗車精', '#e02a2a'], ['水垢水斑去除劑', '#2a9ae0']],
@@ -160,10 +161,20 @@ const BG = {
   },
 };
 
+// GPT 畫的背景圖（tools/stage_art.py 產生 BG_ART）
+const BG_IMG = {};
+const BGS_READY = Promise.all(Object.entries(window.BG_ART || {}).map(([k, u]) => new Promise(res => {
+  const im = new Image(); im.onload = () => { BG_IMG[k] = im; res(); }; im.onerror = () => res(); im.src = u;
+})));
+
 // 先畫到主畫布再存成背景圖（text() 只畫在主畫布上）
 function buildBG(key) {
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-  BG[key]();
+  if (BG_IMG[key]) {
+    ctx.drawImage(BG_IMG[key], 0, 0);
+    const st = STAGES.find(x => x.key === key);
+    (st && st.signs || []).forEach(([x, y, str, o]) => text(str, x, y, Object.assign({ a: 'c' }, o)));
+  } else BG[key]();
   ctx.restore();
   const [c, g] = mkCanvas(W, H);
   g.drawImage(cv, 0, 0);

@@ -110,7 +110,7 @@ const CHARS = [
     body: { top: '#7c859e', topS: '#5d6680', sleeve: '#7c859e', trim: '#232c5a', collar: '#dbe6f6', bow: '#232c5a',
       bottom: 'pencil', skirt: '#222a50', legs: '#ecc8b4', shoes: '#141418', hand: '#f4d3c0', skirtLen: 12, skirtFlare: 2 },
     fx: { main: '#ffffff', sub: '#9fd8ff', glow: '#5aa0ff' },
-    moves: { proj: '高泡音波', rise: '客訴迴旋踢', rush: '連環來電' },
+    rushKick: true, moves: { proj: '高泡音波', rise: '客訴迴旋踢', rush: '連環來電' },
   },
   {
     id: 'leo', pIdx: 3, name: '雷歐', en: 'LEO', title: '流浪拋光職人',
@@ -130,7 +130,7 @@ const CHARS = [
     body: { top: '#ea4f95', topS: '#b8336f', sleeve: '#ea4f95', shirt: '#fbc2d6', bottom: 'pencil', skirt: '#ea4f95',
       legs: '#f6d2c4', shoes: '#d9b45a', hand: '#fadcd0', skirtLen: 11, skirtFlare: 2, heels: true },
     fx: { main: '#ff8ac4', sub: '#fff0f8', glow: '#ff3c8c' },
-    moves: { proj: '乳蠟愛心彈', rise: '閃亮飛踢', rush: '高跟連踢' },
+    rushKick: true, moves: { proj: '乳蠟愛心彈', rise: '閃亮飛踢', rush: '高跟連踢' },
   },
 ];
 const SUPER_NAME = '紅分子・全車鍍膜';
@@ -324,27 +324,50 @@ function buildSprite(ch, pose) {
   return { c, hand: [AF.hnd[0] - OX, AF.hnd[1] - OY], head: [neck[0] - OX, neck[1] - 8 - OY], foot: [LF.f[0] - OX, LF.f[1] - OY] };
 }
 
+// ---------- 圖片動畫格（GPT 畫的動作表切出來的，tools/slice.py 產生 SPRITE_DATA） ----------
+// 動作名稱對照：沒有獨立畫的動作借用相近的格
+const FRAME_ALIAS = { fall: 'jump', ckick0: 'crouch', jpunch: 'jkick', win1: 'win0', yuck: 'hurt', dash: 'rush0', stand: 'idle0', rushK: 'rush0' };
+const FRAMES = {};
+const SPRITES_READY = Promise.all(Object.entries(window.SPRITE_DATA || {}).map(([cid, d]) => new Promise(res => {
+  const im = new Image();
+  im.onload = () => {
+    FRAMES[cid] = {};
+    for (const [n, [fx, fy, fw, fh, ax]] of Object.entries(d.frames)) {
+      const [c, g] = mkCanvas(fw, fh);
+      g.drawImage(im, fx, fy, fw, fh, 0, 0, fw, fh);
+      FRAMES[cid][n] = { c, ox: ax, oy: fh };
+    }
+    res();
+  };
+  im.onerror = () => res();
+  im.src = d.img;
+})));
+
 function getSprite(ch, name) {
+  const fr = FRAMES[ch.id];
+  if (fr) { const f = fr[name] || fr[FRAME_ALIAS[name]] || fr.idle0; if (f) return f; }
+  // 圖還沒載入時退回程式畫的小人
   const key = ch.id + ':' + name;
   let s = spriteCache.get(key);
-  if (!s) { s = buildSprite(ch, POSES[name]); spriteCache.set(key, s); }
+  if (!s) { s = buildSprite(ch, POSES[name] || POSES.idle0); s.ox = OX; s.oy = OY; spriteCache.set(key, s); }
   return s;
 }
 function getSil(ch, name, col) {
-  const key = ch.id + ':' + name + ':' + col;
-  let s = spriteCache.get(key);
-  if (!s) { s = silhouette(getSprite(ch, name).c, col); spriteCache.set(key, s); }
-  return s;
+  const s = getSprite(ch, name);
+  if (!s.sil) s.sil = {};
+  if (!s.sil[col]) s.sil[col] = silhouette(s.c, col);
+  return s.sil[col];
 }
-// 畫角色：x,y = 腳底中心
+// 畫角色：x,y = 腳底中心；opt.scale 放大（選角、結局用）
 function drawChar(ch, name, x, y, face, opt = {}) {
   const s = getSprite(ch, name);
   const img = opt.sil ? getSil(ch, name, opt.sil) : s.c;
+  const k = opt.scale || 1;
   ctx.save();
   if (opt.alpha != null) ctx.globalAlpha = opt.alpha;
   ctx.translate(Math.round(x), Math.round(y));
   if (face < 0) ctx.scale(-1, 1);
-  ctx.drawImage(img, -OX, -OY);
+  ctx.drawImage(img, Math.round(-s.ox * k), Math.round(-s.oy * k), img.width * k, img.height * k);
   ctx.restore();
 }
 

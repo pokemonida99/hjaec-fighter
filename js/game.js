@@ -11,7 +11,7 @@ const NORMALS = {
   jpunch: { frames: [['jpunch', 16]], active: [2, 14], box: [0, -44, 28, 26], pow: 0.9, force: 1, air: true },
   jkick: { frames: [['jkick', 18]], active: [2, 16], box: [2, -36, 34, 24], pow: 1.0, force: 1.4, air: true },
 };
-const RUSH_POSES = { kuri: ['rush0', 'rush1'], rin: ['rushK', 'kick0'], leo: ['rush0', 'rush1'], momo: ['rushK', 'kick0'] };
+
 const PROJ = {
   kuri: { vx: 3.2, vy: 0, g: 0, r: 16, pow: 1.5, glass: 2, life: 120, pierce: 1 },
   rin: { vx: 4.6, vy: 0, g: 0, r: 12, pow: 0.7, glass: 1.6, life: 80, pierce: 4 },
@@ -198,7 +198,7 @@ function updatePlayer(p) {
       const spd = ch.id === 'leo' ? 0.8 : 1.2;
       moveX(p, p.face * spd);
       if (p.t % 6 === 3) {
-        const kick = RUSH_POSES[ch.id][0] === 'rushK' && (p.t / 6 | 0) % 2 === 0;
+        const kick = !!ch.rushKick;
         strike(p, boxWorld(p, kick ? [4, -42, 30, 18] : [4, -54, 26, 26]), ch.id === 'leo' ? 0.75 : 0.5, 0.9);
         Audio2.sfx('rush');
       }
@@ -369,7 +369,7 @@ function drawProj(q) {
 
 // ---------- 污泥怪 ----------
 function spawnBlob() {
-  const wh = pick(car.T.wheels);
+  const wh = pick(car.wheels);
   const x = car.x + wh[0];
   blobs.push({ x, y: GY, vx: 0, vy: -2, t: 0, dead: false, life: 60 * 12, dir: P.x < x ? -1 : 1, ground: false });
   for (let i = 0; i < 6; i++) part({ x: x + rnd(-5, 5), y: GY - 3, vx: rnd(-1, 1), vy: rnd(-2, -0.5), g: 0.15, life: 20, col: '#6b4a2b' });
@@ -485,8 +485,8 @@ function playerPose(p) {
       return p.mv.frames[p.mv.frames.length - 1][0];
     }
     case 'throw': return p.t < 8 ? 'throw0' : p.t < 12 ? 'throw1' : 'throw2';
-    case 'rush': return RUSH_POSES[ch.id][Math.floor(p.t / 4) % 2];
-    case 'rise': return p.t < 26 ? (Math.floor(p.t / 3) % 2 ? 'spinK' : 'spin') : 'fall';
+    case 'rush': return 'rush' + (Math.floor(p.t / 5) % 2);
+    case 'rise': return p.t < 26 ? (Math.floor(p.t / 4) % 2 ? 'spinK' : 'spin') : 'fall';
     case 'hurt': return 'hurt';
     case 'yuck': return 'yuck';
     case 'win': return 'win' + (Math.floor(G.t / 16) % 2);
@@ -502,11 +502,11 @@ function drawPlayer(p) {
   ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(Math.round(p.x - sw / 2), fy - 1, Math.round(sw), 2);
   if (p.inv > 0 && p.inv < 900 && p.st !== 'rise' && (G.t >> 1) % 2) return;
   const pose = playerPose(p);
-  const face = p.st === 'rise' && p.t < 26 ? p.spinFace : p.face;
+  const face = p.face;
   if (p.st === 'rush' || p.st === 'rise' || (p.st === 'super' && SUP && SUP.t > 56)) {
     drawChar(p.ch, pose, p.x - p.face * 6, p.y, face, { sil: p.ch.fx.glow, alpha: 0.45 });
   }
-  drawChar(p.ch, pose, p.x, p.y, face);
+  drawChar(p.ch, pose, p.x, p.y - (p.st === 'win' && (G.t >> 4) % 2 ? 1 : 0), face);
 }
 
 function drawHUD() {
@@ -545,7 +545,7 @@ function drawHUD() {
 // ---------- 場景 ----------
 function drawWorld() {
   ctx.drawImage(bg, 0, 0);
-  BG[stage.key + 'Fx'] && BG[stage.key + 'Fx'](G.t);
+  if (!BG_IMG[stage.key] && BG[stage.key + 'Fx']) BG[stage.key + 'Fx'](G.t);   // 舊的程式背景才有動態效果
   for (const d of decals) { if (d.life > 0) { ctx.globalAlpha = Math.min(1, d.life / 60); px(d.x - 3, GY + 1, 7, 2, '#ecebe2'); px(d.x - 1, GY, 3, 1, '#ffffff'); ctx.globalAlpha = 1; } }
   car.draw(G.t);
   for (const b of blobs) {
@@ -745,8 +745,7 @@ const SCENES = {
       const ch = CHARS[this.cur];
       // 大立像
       const pose = this.lock ? 'win' + (Math.floor(G.t / 10) % 2) : 'idle' + (Math.floor(G.t / 22) % 2);
-      const s = getSprite(ch, pose).c;
-      ctx.drawImage(s, 0, 0, SPR_W, SPR_H, 56 - OX * 1.5, 212 - OY * 1.5, SPR_W * 1.5, SPR_H * 1.5);
+      drawChar(ch, pose, 58, 212, 1, { scale: 1.5 });
       // 資料
       const ix = 116;
       text(ch.en + '　' + ch.title, ix, 106, { c: '#ff8080', o: '#000' });
@@ -1084,4 +1083,4 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 const fontReady = document.fonts ? Promise.race([document.fonts.load(FONT), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
-fontReady.then(() => { textCache.clear(); go('title'); requestAnimationFrame(frame); });
+Promise.all([fontReady, SPRITES_READY, CARS_READY, BGS_READY]).then(() => { textCache.clear(); go('title'); requestAnimationFrame(frame); });
