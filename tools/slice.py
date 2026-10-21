@@ -17,10 +17,18 @@ AIR_BY = {'boss': {'throw1', 'throw2', 'rush0', 'rush1'}, 'hong': {'spin', 'spin
 ORDER_FIX = {}
 
 
+def bg_mask_loose(im):
+    # 只用來分格：門檻寬，姿勢之間的洋紅毛邊不會把兩格黏在一起
+    r, g, b = im.split()
+    return ImageChops.multiply(ImageChops.multiply(r.point(lambda v: 255 if v > 130 else 0), b.point(lambda v: 255 if v > 130 else 0)),
+                               g.point(lambda v: 255 if v < 120 else 0))
+
+
 def bg_mask(im):
     r, g, b = im.split()
-    m = ImageChops.multiply(ImageChops.multiply(r.point(lambda v: 255 if v > 130 else 0), b.point(lambda v: 255 if v > 130 else 0)),
-                            g.point(lambda v: 255 if v < 120 else 0))
+    # 門檻收緊：太寬會把 VIVI 粉紅西裝的像素也當成洋紅底挖掉
+    m = ImageChops.multiply(ImageChops.multiply(r.point(lambda v: 255 if v > 190 else 0), b.point(lambda v: 255 if v > 190 else 0)),
+                            g.point(lambda v: 255 if v < 110 else 0))
     return m   # 255 = 背景
 
 
@@ -83,7 +91,7 @@ def shrink(fr, s):
     for y in range(h):
         for x in range(w):
             r, g, b, a = px[x, y]
-            if a < 140 or (r > 150 and b > 150 and g < 120):   # 去掉洋紅毛邊
+            if a < 140 or (r > 190 and b > 190 and g < 110 and abs(r - b) < 60):   # 去掉洋紅毛邊
                 px[x, y] = (0, 0, 0, 0)
             else:
                 px[x, y] = (r, g, b, 255)
@@ -110,7 +118,7 @@ def main():
         for sh, names in SHEETS.items():
             im = Image.open(f'work/art/{cid}_{sh}.png').convert('RGB')
             mask = bg_mask(im)
-            comps, step = components(ImageChops.invert(mask))
+            comps, step = components(ImageChops.invert(bg_mask_loose(im)))
             comps = order(comps)
             fix = ORDER_FIX.get(f'{cid}_{sh}')
             if fix: comps = [comps[i] for i in fix]
