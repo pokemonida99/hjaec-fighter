@@ -204,11 +204,14 @@ function fit() {
   const vw = innerWidth, vh = innerHeight;
   const portrait = vh > vw;
   document.body.classList.toggle('portrait', portrait && isTouch);
-  let s = Math.min(vw / W, (portrait && isTouch ? vh * 0.55 : vh) / H);
+  const mat = document.getElementById('mat');
+  const matH = mat && getComputedStyle(mat).display !== 'none' && !(portrait && isTouch) ? mat.offsetHeight + 8 : 0;
+  let s = Math.min(vw / W, (portrait && isTouch ? vh * 0.55 : vh - matH) / H);
   if (s >= 2) s = Math.floor(s * 2) / 2;
   cv.style.width = Math.floor(W * s) + 'px';
   cv.style.height = Math.floor(H * s) + 'px';
   document.documentElement.style.setProperty('--cvh', Math.floor(H * s) + 'px');
+  if (mat && !(portrait && isTouch)) mat.style.width = Math.max(320, Math.floor(W * s)) + 'px';
 }
 addEventListener('resize', fit); fit();
 

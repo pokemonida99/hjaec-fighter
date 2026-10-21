@@ -5,12 +5,14 @@ import sys, io, base64, json
 from PIL import Image, ImageChops, ImageFilter
 
 TARGET_H = 74          # 站姿高度（遊戲像素）
+TARGET_BY = {'boss': 80, 'sailor': 80, 'hong': 72, 'fen': 75}
 SHEETS = {
     'A': ['idle0', 'idle1', 'walk0', 'walk1', 'walk2', 'walk3', 'crouch', 'jump'],
     'B': ['punch0', 'punch1', 'kick0', 'kick1', 'cpunch', 'ckick1', 'jkick', 'win0'],
     'C': ['throw0', 'throw1', 'throw2', 'spin', 'spinK', 'rush0', 'rush1', 'hurt'],
 }
 AIR = {'jump', 'jkick', 'spin', 'spinK'}
+AIR_BY = {'boss': {'throw1', 'throw2', 'rush0', 'rush1'}, 'hong': {'spin', 'spinK'}}
 # 個別修正：某張表 GPT 排序跑掉時，在這裡指定 [格子索引順序]
 ORDER_FIX = {}
 
@@ -103,7 +105,7 @@ def anchor_x(fr, air):
 
 def main():
     data = {}; previews = []
-    for cid in ['kuri', 'rin', 'leo', 'momo']:
+    for cid in ['boss', 'sailor', 'hong', 'fen', 'kuri', 'rin', 'leo', 'momo']:
         raw = {}
         for sh, names in SHEETS.items():
             im = Image.open(f'work/art/{cid}_{sh}.png').convert('RGB')
@@ -116,17 +118,17 @@ def main():
                 print(f'!! {cid}_{sh}: 找到 {len(comps)} 格（應為 {len(names)}）')
             for n, c in zip(names, comps):
                 raw[n] = cut(im, mask, c, step)
-        s = TARGET_H / raw['idle0'].height
+        s = TARGET_BY.get(cid, TARGET_H) / raw['idle0'].height
         frames = {}
         for n, fr in raw.items():
             sm = shrink(fr, s)
-            frames[n] = (sm, anchor_x(sm, n in AIR))
+            frames[n] = (sm, anchor_x(sm, n in AIR or n in AIR_BY.get(cid, ())))
         # 打包成一條橫向圖
         W = sum(f.width + 2 for f, _ in frames.values()); H = max(f.height for f, _ in frames.values())
         atlas = Image.new('RGBA', (W, H), (0, 0, 0, 0)); x = 0; meta = {}
         for n, (f, ax) in frames.items():
             atlas.paste(f, (x, 0)); meta[n] = [x, 0, f.width, f.height, ax]; x += f.width + 2
-        b = io.BytesIO(); atlas.save(b, 'PNG')
+        b = io.BytesIO(); atlas.quantize(colors=255, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(b, 'PNG', optimize=True)   # 調色盤 PNG，檔案小很多
         data[cid] = {'img': 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode(), 'frames': meta}
         atlas.save(f'work/atlas_{cid}.png')
         # 預覽：每格放大 3 倍，畫腳底基準點

@@ -93,8 +93,38 @@ const HEADS = {
 // 四位角色（外型取自使用者提供的設定圖；名字、招式皆原創）
 const CHARS = [
   {
-    id: 'kuri', pIdx: 1, name: '栗子', en: 'KURI', title: '文青鍍膜師',
-    blurb: '美術系打工族，最受不了車上的水斑。',
+    id: 'boss', pIdx: 5, name: '巨輪', en: 'GIANT WHEEL', title: '紅分子老闆', fb: 'leo',
+    blurb: '紅分子的老闆，親自下場示範什麼叫鍍膜。',
+    stats: { spd: 3, pow: 5, jmp: 3 }, speed: 1.3, power: 1.3, jump: 1.0, scale: 1.0,
+    fx: { main: '#ff3a3a', sub: '#ffd0d0', glow: '#ff1a1a' },
+    sp: { s1: 'torpedo', s2: 'stomp', rush: 'knee' },
+    cmd: { proj: '←蓄 →＋拳', rise: '↓蓄 ↑＋腳', rush: '→→＋拳' },
+    moves: { proj: '紅分子魚雷', rise: '巨輪踩頭', rush: '雙輪膝擊' },
+  },
+  {
+    id: 'sailor', pIdx: 6, name: '巨輪水手', en: 'SAILOR WHEEL', title: '紅分子老闆（？）', fb: 'leo',
+    blurb: '穿上水手服的老闆。不要問，問就是業配。',
+    stats: { spd: 2, pow: 4, jmp: 4 }, speed: 1.15, power: 1.2, jump: 1.08, scale: 1.0,
+    fx: { main: '#6ac8ff', sub: '#ffffff', glow: '#2a7cff' },
+    rushKick: true, moves: { proj: '水手高壓水砲', rise: '海浪漩渦', rush: '水手連環踢' },
+  },
+  {
+    id: 'hong', pIdx: 7, name: '小紅', en: 'HONG', title: '紅分子代言人', fb: 'rin',
+    blurb: '速度最快，一瓶鍍膜噴霧走天下。',
+    stats: { spd: 5, pow: 2, jmp: 4 }, speed: 1.65, power: 0.9, jump: 1.1, scale: 1.0,
+    fx: { main: '#ff7a8a', sub: '#ffffff', glow: '#ff2a4a' },
+    moves: { proj: '鍍膜噴霧', rise: '空翻踢', rush: '連環手刀' },
+  },
+  {
+    id: 'fen', pIdx: 8, name: '小芬', en: 'FEN', title: '紅分子代言人', fb: 'momo',
+    blurb: '吸水巾一甩，水珠跟髒污一起飛。',
+    stats: { spd: 4, pow: 3, jmp: 3 }, speed: 1.45, power: 1.05, jump: 1.0, scale: 1.0,
+    fx: { main: '#bfe8ff', sub: '#ffffff', glow: '#40a0ff' },
+    rushKick: true, moves: { proj: '吸水巾甩擊', rise: '旋風吸水巾', rush: '長腿連踢' },
+  },
+  {
+    id: 'kuri', pIdx: 1, name: '小葵', en: 'AOI', title: '新銳設計師',
+    blurb: '剛進公司的設計師，最受不了車上的水斑。',
     stats: { spd: 3, pow: 3, jmp: 3 }, speed: 1.35, power: 1.0, jump: 1.0, scale: 1.0,
     pal: { B: '#b5713c', b: '#7f4a22', H: '#7a5536', h: '#4f3520', S: '#f6d2b8', s: '#d8a888', G: '#9b7563', E: '#2a1c1c', M: '#c4505a', W: '#fff' },
     body: { top: '#efe4c8', topS: '#c9b791', sleeve: '#e6d9b8', bottom: 'skirt', skirt: '#26346a', dots: ['#d8402c', '#f0b040', '#e86a80'],
@@ -103,7 +133,7 @@ const CHARS = [
     moves: { proj: '結晶鍍膜波', rise: '炫鑽迴旋', rush: '拋光連掌' },
   },
   {
-    id: 'rin', pIdx: 2, name: '小鈴', en: 'RIN', title: '客服專線王牌',
+    id: 'rin', pIdx: 2, name: '小米', en: 'MI', title: '客服人員',
     blurb: '一天接三百通電話，音波比水柱還強。',
     stats: { spd: 5, pow: 2, jmp: 3 }, speed: 1.6, power: 0.85, jump: 1.0, scale: 0.98,
     pal: { K: '#1c1c22', k: '#3a3a44', H: '#25242c', h: '#121117', S: '#f4d3c0', s: '#d6a690', E: '#1a1418', R: '#b8505e', W: '#fff' },
@@ -113,8 +143,8 @@ const CHARS = [
     rushKick: true, moves: { proj: '高泡音波', rise: '客訴迴旋踢', rush: '連環來電' },
   },
   {
-    id: 'leo', pIdx: 3, name: '雷歐', en: 'LEO', title: '流浪拋光職人',
-    blurb: '話很少，手很重，連柏油都會跪。',
+    id: 'leo', pIdx: 3, name: '阿傑', en: 'JIE', title: '老鳥設計師',
+    blurb: '改過一千次稿，柏油也照樣改掉。',
     stats: { spd: 2, pow: 5, jmp: 2 }, speed: 1.1, power: 1.35, jump: 0.92, scale: 1.07,
     pal: { H: '#8a5228', h: '#5b3418', S: '#e2b48f', s: '#bf8c6a', E: '#2a1a12', G: '#a8844e', D: '#4a2c18', R: '#a86058' },
     body: { top: '#1d1d22', topS: '#0f0f13', sleeve: '#1d1d22', turtle: true, bottom: 'pants', pants: '#2b3d66', pantsS: '#1f2c4c',
@@ -123,8 +153,8 @@ const CHARS = [
     moves: { proj: '去汙重砲', rise: '拋光風車', rush: '重壓清潔' },
   },
   {
-    id: 'momo', pIdx: 4, name: '蜜桃', en: 'MOMO', title: '業績女王',
-    blurb: '業績第一的業務，高跟鞋踢得最高。',
+    id: 'momo', pIdx: 4, name: 'VIVI', en: 'VIVI', title: '老闆',
+    blurb: '設計公司老闆，高跟鞋踢得比誰都高。',
     stats: { spd: 3, pow: 3, jmp: 5 }, speed: 1.4, power: 1.05, jump: 1.18, scale: 1.0,
     pal: { H: '#efd59e', h: '#c4a466', S: '#fadcd0', s: '#e3b2a2', E: '#4a2a20', W: '#fff', R: '#e8607a' },
     body: { top: '#ea4f95', topS: '#b8336f', sleeve: '#ea4f95', shirt: '#fbc2d6', bottom: 'pencil', skirt: '#ea4f95',
@@ -134,6 +164,8 @@ const CHARS = [
   },
 ];
 const SUPER_NAME = '紅分子・全車鍍膜';
+const DEFAULT_CMD = { proj: '↓↓＋拳', rise: '↓↓＋腳', rush: '→→＋拳' };
+const cmdOf = (ch, k) => (ch.cmd && ch.cmd[k]) || DEFAULT_CMD[k];
 
 // ---------- 姿勢（角度單位：度；0 = 朝下，90 = 朝前，180 = 朝上） ----------
 // a = [肩, 肘]  l = [髖, 膝]  F 前側 B 後側  lean 前傾  bob 身體下沉
@@ -349,7 +381,7 @@ function getSprite(ch, name) {
   // 圖還沒載入時退回程式畫的小人
   const key = ch.id + ':' + name;
   let s = spriteCache.get(key);
-  if (!s) { s = buildSprite(ch, POSES[name] || POSES.idle0); s.ox = OX; s.oy = OY; spriteCache.set(key, s); }
+  if (!s) { s = buildSprite(ch.fb ? CHARS.find(c => c.id === ch.fb) : ch, POSES[name] || POSES.idle0); s.ox = OX; s.oy = OY; spriteCache.set(key, s); }
   return s;
 }
 function getSil(ch, name, col) {

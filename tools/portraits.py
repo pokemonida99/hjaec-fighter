@@ -33,8 +33,8 @@ def b64(im):
 
 out = ['// 由 tools/portraits.py 產生，勿手改', 'window.PORTRAITS = {']
 big = ['window.PORTRAITS_BIG = {']
-prev = Image.new('RGBA', (112 * 4 * 3, 112 * 3), (120, 0, 0, 255))
-for i in range(1, 5):
+prev = Image.new('RGBA', (112 * 8 * 3, 112 * 3), (120, 0, 0, 255))
+for i in range(1, 9):
     a, b = make(f'work/art/p{i}.png', 64), make(f'work/art/p{i}.png', 112)
     a.save(f'assets/portrait{i}.png'); b.save(f'assets/portrait{i}_big.png')
     out.append(f'  {i}: "{b64(a)}",'); big.append(f'  {i}: "{b64(b)}",')

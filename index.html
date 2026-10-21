@@ -11,7 +11,32 @@
   @font-face { font-family: 'Cubic'; src: url('fonts/Cubic_11.woff2') format('woff2'); font-display: block; }
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; touch-action: none;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #wrap { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+
+  /* 桌墊：遊戲畫面下方的出招表 */
+  #mat { height: 150px; max-width: 100vw; box-sizing: border-box; font-family: 'Cubic', 'PingFang TC', sans-serif; color: #eee;
+    background: repeating-linear-gradient(135deg, #160006 0 14px, #1e0009 14px 28px); border: 3px solid #c81e28; border-radius: 6px;
+    display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+  .mat-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 3px 10px; font-size: 13px;
+    color: #ffd040; letter-spacing: 2px; background: linear-gradient(#c81e28, #7a0e14); text-shadow: 0 2px 0 #000; }
+  .mat-head button { font: inherit; font-size: 11px; color: #fff; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.4); border-radius: 4px; padding: 1px 8px; cursor: pointer; letter-spacing: 0; }
+  .mat-body { touch-action: pan-x; flex: 1; display: flex; gap: 6px; padding: 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  .card { flex: none; width: 168px; background: rgba(0,0,0,.6); border: 1px solid #4a1a22; border-radius: 4px; padding: 5px 7px; font-size: 11px; line-height: 1.45; }
+  .card.on { border-color: #ffd040; box-shadow: 0 0 0 1px #ffd040 inset; background: rgba(90,0,16,.7); }
+  .card .top { display: flex; gap: 6px; align-items: center; margin-bottom: 3px; }
+  .card img { width: 30px; height: 30px; image-rendering: pixelated; border: 1px solid #ffd040; background: #300; }
+  .card .nm { font-size: 14px; color: #fff; }
+  .card .nm small { display: block; font-size: 10px; color: #ff8080; }
+  .card.basic { width: 210px; }
+  .card.basic .nm { color: #ffd040; margin-bottom: 4px; }
+  .card ul { list-style: none; margin: 0; padding: 0; }
+  .card li { white-space: nowrap; }
+  .card b { display: inline-block; min-width: 74px; color: #9ad8ff; font-weight: normal; }
+  body.mat-off .mat-body { display: none; }
+  body.mat-off #mat { height: auto; }
+  body.touch:not(.portrait) #mat { display: none; }
+  body.touch.portrait #wrap { justify-content: flex-start; gap: 54px; }
+  body.touch.portrait #mat { width: 100vw; height: 170px; border-left: none; border-right: none; border-radius: 0; }
   #game { display: block; image-rendering: pixelated; image-rendering: crisp-edges; background: #000; }
   body.portrait #wrap { align-items: flex-start; padding-top: max(env(safe-area-inset-top), 12px); }
 
@@ -50,7 +75,7 @@
 </style>
 </head>
 <body>
-<div id="wrap"><canvas id="game" width="384" height="216"></canvas></div>
+<div id="wrap"><canvas id="game" width="384" height="216"></canvas><div id="mat"></div></div>
 
 <div id="touch">
   <div class="pad" id="pad"><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i><div class="knob" id="knob"></div></div>
@@ -62,17 +87,16 @@
     <div class="btn b-sup" data-b="sup">超</div>
   </div>
   <div class="btn b-start" data-b="start">START</div>
-  <div id="hint">手機橫放畫面更大<br><b>↓↓＋拳</b> 飛彈　<b>↓↓＋腳</b> 迴旋　<b>→→＋拳</b> 連打<br>也可以直接按「飛彈」「迴旋」鍵</div>
 </div>
 
-<script src="js/portraits.js?v=6"></script>
-<script src="js/sprite_data.js?v=6"></script>
-<script src="js/art_data.js?v=6"></script>
-<script src="js/core.js?v=6"></script>
-<script src="js/audio.js?v=6"></script>
-<script src="js/sprites.js?v=6"></script>
-<script src="js/car.js?v=6"></script>
-<script src="js/stage.js?v=6"></script>
-<script src="js/game.js?v=6"></script>
+<script src="js/portraits.js?v=8"></script>
+<script src="js/sprite_data.js?v=8"></script>
+<script src="js/art_data.js?v=8"></script>
+<script src="js/core.js?v=8"></script>
+<script src="js/audio.js?v=8"></script>
+<script src="js/sprites.js?v=8"></script>
+<script src="js/car.js?v=8"></script>
+<script src="js/stage.js?v=8"></script>
+<script src="js/game.js?v=8"></script>
 </body>
 </html>
