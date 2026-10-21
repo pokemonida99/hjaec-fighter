@@ -42,8 +42,9 @@ function loadBoard() {
 }
 let BOARD = loadBoard();
 // ---------- 版本與更新紀錄（改版時一起更新，標題畫面與桌墊都會顯示） ----------
-const VERSION = 'v2.4';
+const VERSION = 'v2.4.1';
 const CHANGELOG = [
+  ['v2.4.1', '手機與電腦都不會被誤觸放大（連點兩下、兩指縮放、Ctrl＋滾輪）', '文字與圖片不能被選取、拖曳，長按不會跳出選單'],
   ['v2.4', '新最終關「飛天電動車」：洗一洗就會起飛，要跳起來打，偶爾降落充電', '走路換成新的連續動作；可以跑步（連按兩下方向，或按住約半秒）', '跑步中按拳直接衝刺連打', '車身下半部更好洗：蹲拳、掃腿範圍加大，泡沫水往下流也會洗到下面', '加上版本號與更新紀錄'],
   ['v2.3', '開場與每關結算改用紅分子官網的官方商品照'],
   ['v2.2.1', '修正 VIVI 粉紅西裝上的暗色雜點'],
@@ -1373,7 +1374,7 @@ function buildMat() {
   let h = `<div class="mat-head">出招表 COMMAND LIST<span><button id="matLog">${VERSION} 更新紀錄</button> <button id="matToggle">收起</button></span></div><div class="mat-body">`;
   h += `<div class="card basic"><div class="nm">基本操作</div><ul>${basic.map(b => `<li>${b}</li>`).join('')}</ul></div>`;
   CHARS.forEach((ch, i) => {
-    h += `<div class="card" data-i="${i}"><div class="top"><img src="${PORTRAITS[ch.pIdx]}" alt=""><div class="nm">${ch.name}<small>${ch.title}</small></div></div><ul>` +
+    h += `<div class="card" data-i="${i}"><div class="top"><img src="${PORTRAITS[ch.pIdx]}" alt="" draggable="false"><div class="nm">${ch.name}<small>${ch.title}</small></div></div><ul>` +
       moveLines(ch).map(([c, n]) => `<li><b>${c}</b>${n}</li>`).join('') + `</ul></div>`;
   });
   mat.innerHTML = h + '</div>';

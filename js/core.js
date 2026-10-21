@@ -196,6 +196,30 @@ if (isTouch) document.body.classList.add('touch');
   document.addEventListener('click', () => Audio2.unlock());
 })();
 
+// ---------- 防止縮放、選取、長按選單（iPhone Safari 不理 user-scalable=no，要用程式擋） ----------
+(function noZoomNoSelect() {
+  const stop = e => e.preventDefault();
+  // iPhone 兩指縮放手勢
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, stop, { passive: false }));
+  // 兩指以上的觸控移動（縮放）
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
+  // 連點兩下放大：300ms 內第二次觸控結束就擋掉（觸控按鍵用 pointer 事件，不受影響）
+  let lastTouch = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouch < 320 && !e.target.closest('.mat-body, dialog')) e.preventDefault();
+    lastTouch = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  // 選取文字、拖曳圖片、長按／右鍵選單
+  ['selectstart', 'dragstart', 'contextmenu'].forEach(t => document.addEventListener(t, stop));
+  // 電腦：Ctrl／⌘ ＋ 滾輪或觸控板縮放、Ctrl／⌘ ＋ ＋／－／0
+  addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
+  addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0', '_'].includes(e.key)) e.preventDefault(); });
+  // 萬一還是被縮放了（例如系統手勢），選取範圍也清掉
+  document.addEventListener('selectionchange', () => { const sel = getSelection && getSelection(); if (sel && sel.rangeCount && !sel.isCollapsed) sel.removeAllRanges(); });
+})();
+
 // 手機震動（Android 有效，iPhone 會略過）
 function buzz(ms) { if (isTouch && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) { /* 不支援 */ } }
 
