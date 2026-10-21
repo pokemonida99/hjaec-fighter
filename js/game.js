@@ -51,7 +51,11 @@ let R = null;   // 本關紀錄
 
 // 開場商品：圖是 GPT 畫的示意瓶（tools/stage_art.py → PRODUCT_ART），名稱取自紅分子官網
 const PROD = [['奈米陶瓷', '封體鍍膜'], ['超效除汙', '高泡洗車精'], ['炫鑽玻璃', '鍍膜'], ['全效環保', '去汙劑']];
-const productImg = (window.PRODUCT_ART || []).map(u => { const im = new Image(); im.src = u; return im; });
+// 官方商品照（紅分子官網，tools/products.py 裁切）：big 高 100 給開場，small 高 46 給結算
+const PHOTO = { big: {}, small: {} };
+for (const sz of ['big', 'small']) for (const [k, u] of Object.entries((window.PRODUCT_PHOTO || {})[sz] || {})) { const im = new Image(); im.src = u; PHOTO[sz][k] = im; }
+const photoOf = (name, sz) => PHOTO[sz][name.replace('濃縮', '')];
+const productImg = (window.PRODUCT_ART || []).map(u => { const im = new Image(); im.src = u; return im; });   // 沒有官方照時的備用圖
 const portraitImg = {}, portraitBig = {};
 for (const k of Object.keys(PORTRAITS_BIG)) { const im = new Image(); im.src = PORTRAITS_BIG[k]; portraitBig[k] = im; }
 const portraitSmall = {}, portraitMid = {};
@@ -840,8 +844,14 @@ const SCENES = {
           const t0 = i * 27, gx = 48 + i * 96;
           if (g < t0) return;
           const x = g - t0 < 10 ? gx + (10 - (g - t0)) * 40 : gx;
-          const im = productImg[i];
-          if (im && im.complete) ctx.drawImage(im, Math.round(x - im.width / 2), 150 - im.height);
+          const im = photoOf(pr[0] + pr[1], 'big') || productImg[i];
+          if (im && im.complete) {
+            const ix = Math.round(x - im.width / 2), iy = 146 - im.height;
+            px(ix - 2, iy - 2, im.width + 4, im.height + 4, '#ffd040'); px(ix - 1, iy - 1, im.width + 2, im.height + 2, '#000');
+            ctx.drawImage(im, ix, iy);
+            const sh = (g - t0) * 6 - 20;                // 卡片上掃過一道光
+            if (sh < im.width + 20) { ctx.save(); ctx.beginPath(); ctx.rect(ix, iy, im.width, im.height); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.moveTo(ix + sh, iy); ctx.lineTo(ix + sh + 8, iy); ctx.lineTo(ix + sh - 12, iy + im.height); ctx.lineTo(ix + sh - 20, iy + im.height); ctx.fill(); ctx.restore(); }
+          }
           px(x - 30, 150, 60, 2, '#ff3030');
           if (g - t0 > 8) {
             text(pr[0], x, 158, { c: '#ffffff', a: 'c', o: '#000' });
@@ -1096,12 +1106,13 @@ const SCENES = {
       // 產品
       px(0, 140, W, 1, '#5a0010');
       text('本關登場的紅分子好物', 16, 146, { c: '#ff8080', o: '#000' });
-      this.bottles.forEach((b, i) => {
-        const x = 24 + i * 180;
-        ctx.drawImage(b, x, 162);
-        text(stage.products[i][0], x + 22, 172, { c: '#ffffff', o: '#000' });
+      stage.products.forEach(([name], i) => {
+        const x = 16 + i * 186, im = photoOf(name, 'small');
+        if (im && im.complete) { px(x - 1, 162, im.width + 2, im.height + 2, '#ffd040'); ctx.drawImage(im, x, 163); }
+        else ctx.drawImage(this.bottles[i], x, 166);
+        text(name, x + (im ? im.width : 16) + 6, 180, { c: '#ffffff', o: '#000' });
       });
-      if (G.st > 140 && G.t % 60 < 40) text(G.stageIdx < STAGES.length - 1 ? '按任意攻擊鍵　下一關' : '按任意攻擊鍵　看結局', W / 2, 202, { c: '#ffd040', a: 'c', o: '#000' });
+      if (G.st > 140 && G.t % 60 < 40) text(G.stageIdx < STAGES.length - 1 ? '按攻擊鍵　下一關' : '按攻擊鍵　看結局', 378, 127, { c: '#ffd040', a: 'r', o: '#000' });
     },
   },
 
