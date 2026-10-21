@@ -72,9 +72,16 @@
   body.touch.portrait #hint { display: block; top: calc(var(--cvh, 230px) + 70px); }
   body.touch.portrait .b-start { top: calc(var(--cvh, 230px) + 24px); right: 50%; transform: translateX(50%); }
   #hint b { color: #ffd040; font-weight: normal; }
+  #logDlg { font-family: 'Cubic', 'PingFang TC', sans-serif; background: #160006; color: #eee; border: 3px solid #c81e28; border-radius: 6px; max-width: min(520px, 90vw); max-height: 80vh; }
+  #logDlg::backdrop { background: rgba(0,0,0,.6); }
+  #logDlg > b { color: #ffd040; font-size: 18px; }
+  #logDlg h4 { margin: 12px 0 4px; color: #ff6060; }
+  #logDlg ul { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+  #logDlg button { margin-top: 12px; font: inherit; color: #fff; background: #c81e28; border: 0; border-radius: 4px; padding: 4px 16px; cursor: pointer; }
 </style>
 </head>
 <body>
+<dialog id="logDlg"><b>更新紀錄</b><div></div><form method="dialog"><button>關閉</button></form></dialog>
 <div id="wrap"><canvas id="game" width="384" height="216"></canvas><div id="mat"></div></div>
 
 <div id="touch">
@@ -89,15 +96,15 @@
   <div class="btn b-start" data-b="start">START</div>
 </div>
 
-<script src="js/portraits.js?v=12"></script>
-<script src="js/sprite_data.js?v=12"></script>
-<script src="js/art_data.js?v=12"></script>
-<script src="js/product_data.js?v=12"></script>
-<script src="js/core.js?v=12"></script>
-<script src="js/audio.js?v=12"></script>
-<script src="js/sprites.js?v=12"></script>
-<script src="js/car.js?v=12"></script>
-<script src="js/stage.js?v=12"></script>
-<script src="js/game.js?v=12"></script>
+<script src="js/portraits.js?v=14"></script>
+<script src="js/sprite_data.js?v=14"></script>
+<script src="js/art_data.js?v=14"></script>
+<script src="js/product_data.js?v=14"></script>
+<script src="js/core.js?v=14"></script>
+<script src="js/audio.js?v=14"></script>
+<script src="js/sprites.js?v=14"></script>
+<script src="js/car.js?v=14"></script>
+<script src="js/stage.js?v=14"></script>
+<script src="js/game.js?v=14"></script>
 </body>
 </html>

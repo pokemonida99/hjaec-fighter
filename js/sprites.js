@@ -358,7 +358,7 @@ function buildSprite(ch, pose) {
 
 // ---------- 圖片動畫格（GPT 畫的動作表切出來的，tools/slice.py 產生 SPRITE_DATA） ----------
 // 動作名稱對照：沒有獨立畫的動作借用相近的格
-const FRAME_ALIAS = { fall: 'jump', ckick0: 'crouch', jpunch: 'jkick', win1: 'win0', yuck: 'hurt', dash: 'rush0', stand: 'idle0', rushK: 'rush0' };
+const FRAME_ALIAS = { run0: 'walk0', run1: 'walk1', run2: 'walk2', run3: 'walk3', fall: 'jump', ckick0: 'crouch', jpunch: 'jkick', win1: 'win0', yuck: 'hurt', dash: 'rush0', stand: 'idle0', rushK: 'rush0' };
 const FRAMES = {};
 const SPRITES_READY = Promise.all(Object.entries(window.SPRITE_DATA || {}).map(([cid, d]) => new Promise(res => {
   const im = new Image();

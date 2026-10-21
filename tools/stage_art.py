@@ -3,8 +3,8 @@
 import sys, io, base64, json
 from PIL import Image
 
-CAR_W = {'sedan': 246, 'suv': 238, 'sports': 252}
-BGS = ['garage', 'sunset', 'night']
+CAR_W = {'sedan': 246, 'suv': 238, 'sports': 252, 'ev': 240}
+BGS = ['garage', 'sunset', 'night', 'pad']
 W, H = 384, 216
 
 

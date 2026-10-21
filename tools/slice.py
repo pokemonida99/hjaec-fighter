@@ -1,7 +1,7 @@
 # 把 GPT 生的角色動作表（洋紅底、4×2 格）切成一張張動畫格，對齊腳底、縮成遊戲尺寸
 # 輸出 js/sprite_data.js：window.SPRITE_DATA = { kuri: { img: dataURL, frames: { idle0: [x, y, w, h, ax] ... } } }
 # 用法：python3 tools/slice.py [預覽圖輸出路徑]
-import sys, io, base64, json
+import sys, os, io, base64, json
 from PIL import Image, ImageChops, ImageFilter
 
 TARGET_H = 74          # 站姿高度（遊戲像素）
@@ -10,8 +10,9 @@ SHEETS = {
     'A': ['idle0', 'idle1', 'walk0', 'walk1', 'walk2', 'walk3', 'crouch', 'jump'],
     'B': ['punch0', 'punch1', 'kick0', 'kick1', 'cpunch', 'ckick1', 'jkick', 'win0'],
     'C': ['throw0', 'throw1', 'throw2', 'spin', 'spinK', 'rush0', 'rush1', 'hurt'],
+    'D': ['walk0', 'walk1', 'walk2', 'walk3', 'run0', 'run1', 'run2', 'run3'],   # 新的走路／跑步循環（覆蓋 A 的走路格）
 }
-AIR = {'jump', 'jkick', 'spin', 'spinK'}
+AIR = {'jump', 'jkick', 'spin', 'spinK', 'walk0', 'walk1', 'walk2', 'walk3', 'run0', 'run1', 'run2', 'run3'}   # 用重心對齊，走路跑步才不會左右抖
 AIR_BY = {'boss': {'throw1', 'throw2', 'rush0', 'rush1'}, 'hong': {'spin', 'spinK'}}
 # 個別修正：某張表 GPT 排序跑掉時，在這裡指定 [格子索引順序]
 ORDER_FIX = {}
@@ -54,6 +55,22 @@ def components(mask, step=4):
     big = comps[0]['n']
     comps = [c for c in comps if c['n'] > big * 0.12]
     return comps, step
+
+
+def grid_comps(fg, names, step=4, cols=4, rows=2):
+    # 備用：格子太擠、自動找不到 8 格時，直接用 4×2 格子切
+    w, h = fg.size
+    sm = fg.resize((w // step, h // step), Image.BOX).point(lambda v: 255 if v > 20 else 0)
+    sw, sh = sm.size; px = sm.load(); comps = []
+    for r in range(rows):
+        for c in range(cols):
+            x0, x1 = c * sw // cols, (c + 1) * sw // cols; y0, y1 = r * sh // rows, (r + 1) * sh // rows
+            pts = {(x, y) for y in range(y0, y1) for x in range(x0, x1) if px[x, y]}
+            if not pts: continue
+            xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+            comps.append({'n': len(pts), 'box': (min(xs) * step, min(ys) * step, (max(xs) + 1) * step, (max(ys) + 1) * step),
+                          'pts': pts, 'cx': sum(xs) / len(xs) * step, 'cy': sum(ys) / len(ys) * step})
+    return comps
 
 
 def order(comps):
@@ -116,10 +133,13 @@ def main():
     for cid in ['boss', 'sailor', 'hong', 'fen', 'kuri', 'rin', 'leo', 'momo']:
         raw = {}
         for sh, names in SHEETS.items():
+            if not os.path.exists(f'work/art/{cid}_{sh}.png'): continue
             im = Image.open(f'work/art/{cid}_{sh}.png').convert('RGB')
             mask = bg_mask(im)
             comps, step = components(ImageChops.invert(bg_mask_loose(im)))
             comps = order(comps)
+            if len(comps) != len(names):
+                print(f'   {cid}_{sh}: 自動切格得到 {len(comps)} 格，改用 4×2 格子切'); comps = grid_comps(ImageChops.invert(mask), names)
             fix = ORDER_FIX.get(f'{cid}_{sh}')
             if fix: comps = [comps[i] for i in fix]
             if len(comps) != len(names):

@@ -6,8 +6,8 @@
 const NORMALS = {
   jab: { frames: [['punch0', 3], ['punch1', 5], ['punch0', 6]], active: [3, 7], box: [2, -58, 28, 18], pow: 0.9, force: 0.8 },
   kick: { frames: [['kick0', 5], ['kick1', 7], ['kick0', 8]], active: [5, 11], box: [4, -48, 34, 22], pow: 1.0, force: 1.4 },
-  cjab: { frames: [['crouch', 2], ['cpunch', 5], ['crouch', 5]], active: [2, 6], box: [2, -38, 28, 16], pow: 0.9, force: 0.8, crouch: true },
-  csweep: { frames: [['ckick0', 4], ['ckick1', 8], ['ckick0', 8]], active: [4, 11], box: [0, -20, 38, 20], pow: 1.0, force: 1.2, crouch: true },
+  cjab: { frames: [['crouch', 2], ['cpunch', 5], ['crouch', 5]], active: [2, 6], box: [0, -36, 32, 32], pow: 1.0, force: 0.8, crouch: true },
+  csweep: { frames: [['ckick0', 4], ['ckick1', 8], ['ckick0', 8]], active: [4, 11], box: [0, -26, 44, 26], pow: 1.2, force: 1.2, crouch: true },
   jpunch: { frames: [['jpunch', 16]], active: [2, 14], box: [0, -44, 28, 26], pow: 0.9, force: 1, air: true },
   jkick: { frames: [['jkick', 18]], active: [2, 16], box: [2, -36, 34, 24], pow: 1.0, force: 1.4, air: true },
 };
@@ -41,6 +41,19 @@ function loadBoard() {
   return BOARD_DEFAULT.map(x => x.slice());
 }
 let BOARD = loadBoard();
+// ---------- 版本與更新紀錄（改版時一起更新，標題畫面與桌墊都會顯示） ----------
+const VERSION = 'v2.4';
+const CHANGELOG = [
+  ['v2.4', '新最終關「飛天電動車」：洗一洗就會起飛，要跳起來打，偶爾降落充電', '走路換成新的連續動作；可以跑步（連按兩下方向，或按住約半秒）', '跑步中按拳直接衝刺連打', '車身下半部更好洗：蹲拳、掃腿範圍加大，泡沫水往下流也會洗到下面', '加上版本號與更新紀錄'],
+  ['v2.3', '開場與每關結算改用紅分子官網的官方商品照'],
+  ['v2.2.1', '修正 VIVI 粉紅西裝上的暗色雜點'],
+  ['v2.2', '開場動畫：品牌、商品、8 位角色、擦亮車子', '重寫配樂：開場、選角、三首戰鬥曲、結局', '選角角色代表音、結局煙火'],
+  ['v2.1', '新增紅分子隊：巨輪、巨輪水手、小紅、小芬（排在前面）', '原四人改名小葵、小米、阿傑、VIVI', '巨輪蓄力指令招式；桌墊出招表與暫停選單出招表'],
+  ['v2.0', '角色改成逐格動作圖，背景與車子改成繪製像素圖', '髒污與車身明暗混合'],
+  ['v1.1', '像素頭像、車燈與輪框反應、最終關下雨與鍍膜', '暫停選單、DEMO PLAY、前五名排行榜'],
+  ['v1.0', '首版：三關打亮車、四位角色、原創招式與配樂'],
+];
+
 const G = {
   scene: 'boot', t: 0, st: 0, chIdx: 0, stageIdx: 0, total: 0, hi: Math.max(Store.get('hi', 0), BOARD[0][1]),
   hitstop: 0, shake: 0, paused: false, rankHi: -1, demo: false, pi: 0,
@@ -119,6 +132,12 @@ function strike(p, rect, pow, force, tag) {
   for (const bd of birds) if (bd.st === 'fly' && rectHit(rect, { x: bd.x - 7, y: bd.y - 4, w: 14, h: 9 })) { shooBird(bd); any = true; }
   // 車
   const res = car.cleanRect(rect.x, rect.y, rect.w, rect.h, pow * ch.power);
+  const by = rect.y + rect.h, cb = car.y + car.h;
+  if (res.touched && by < cb) {
+    const drip = car.cleanRect(rect.x + 3, by, rect.w - 6, cb - by, pow * ch.power * 0.35);
+    res.removed += drip.removed;
+    if (drip.removed > 1) for (let i = 0; i < 3; i++) part({ x: rect.x + rnd(4, rect.w - 4), y: by + rnd(0, 6), vy: rnd(0.6, 1.4), life: 22, col: '#bfe8ff' });
+  }
   if (res.touched) {
     any = true;
     const cx = clamp(p.face > 0 ? rect.x + rect.w - 6 : rect.x + 6, car.left + 2, car.right - 2);
@@ -165,7 +184,7 @@ function updatePlayer(p) {
   if (held.right && charged('left')) chargeDir = 1; else if (held.left && charged('right')) chargeDir = -1;
   const wantS1 = pr.s1 || (pr.p && (sp.s1 === 'torpedo' ? chargeDir !== 0 : I.motion(['down', 'down'], p.face)));
   const wantS2 = pr.s2 || (pr.k && (sp.s2 === 'stomp' ? charged('down') && (held.up || I.motion(['up'], p.face, 8)) : I.motion(['down', 'down'], p.face)));
-  const wantRush = pr.p && !wantS1 && I.motion(['fwd', 'fwd'], p.face, 18);
+  const wantRush = pr.p && !wantS1 && (I.motion(['fwd', 'fwd'], p.face, 18) || (p.running && !held.down));
   const canAct = free || (p.st === 'jump' && !p.mv);
 
   if (canAct && pr.sup && p.meter >= 100) { startSuper(p); return; }
@@ -183,7 +202,7 @@ function updatePlayer(p) {
     case 'idle': case 'walk': case 'crouch': {
       if (pr.up) {
         const dir = held.left ? -1 : held.right ? 1 : 0;
-        p.vx = dir * 1.7 * (0.85 + ch.speed * 0.15); p.vy = -5.4 * ch.jump; p.ground = false; p.st = 'jump'; p.mv = null;
+        p.vx = dir * 1.7 * (0.85 + ch.speed * 0.15) * (p.running ? 1.5 : 1); p.vy = -5.4 * ch.jump; p.ground = false; p.st = 'jump'; p.mv = null; p.running = false;
         break;
       }
       if (held.down) {
@@ -194,7 +213,15 @@ function updatePlayer(p) {
       if (pr.p) { startMove(p, 'jab'); break; }
       if (pr.k) { startMove(p, 'kick'); break; }
       const dir = held.left ? -1 : held.right ? 1 : 0;
-      if (dir) { moveX(p, dir * ch.speed); p.st = 'walk'; } else p.st = 'idle';
+      if (dir) {
+        if (dir !== p.walkDir) { p.walkDir = dir; p.walkT = 0; p.running = false; }
+        p.walkT++;
+        const dname = dir > 0 ? 'right' : 'left';
+        if (!p.running && (p.walkT >= 28 || (pr[dname] && I.motion([dname, dname], p.face, 14)))) { p.running = true; Audio2.sfx('whiff'); }
+        moveX(p, dir * ch.speed * (p.running ? 1.9 : 1));
+        if (p.running && p.t % 8 === 0) part({ x: p.x - dir * 6, y: p.y - 1, vx: -dir * 0.6, vy: -0.4, life: 12, col: '#9a9aa8' });
+        p.st = 'walk';
+      } else { p.st = 'idle'; p.walkT = 0; p.running = false; p.walkDir = 0; }
       break;
     }
     case 'jump': {
@@ -558,7 +585,7 @@ function playerPose(p) {
   const ch = p.ch;
   switch (p.st) {
     case 'idle': return 'idle' + (Math.floor(G.t / 22) % 2);
-    case 'walk': return 'walk' + (Math.floor(p.t / 7) % 4);
+    case 'walk': return p.running ? 'run' + (Math.floor(p.t / 5) % 4) : 'walk' + (Math.floor(p.t / 8) % 4);
     case 'crouch': return 'crouch';
     case 'jump': return p.mv ? p.mvName : p.vy < 0 ? 'jump' : 'fall';
     case 'attack': {
@@ -667,6 +694,23 @@ function checkMilestones() {
   ];
   for (const [th, msg, fn] of M) if (cl >= th && !R.ms[th]) { R.ms[th] = true; fn(); banner(msg, '#fff2a0'); }
 }
+// 飛天電動車：洗到一點點就起飛，偶爾降落充電
+function updateFly() {
+  const F = R.fly;
+  if (!F) return;
+  F.t++;
+  if (F.ph === 'ground') {
+    if (car.clean >= 0.12 || F.t > 360) { F.ph = 'lift'; F.t = 0; banner('飛天電動車起飛了！跳起來打！', '#9ad8ff'); Audio2.sfx('hover'); }
+  } else if (F.ph === 'lift') {
+    F.alt += (52 + Math.sin(G.t * 0.045) * 8 - F.alt) * 0.04;
+    if (F.t > 60 * 9) { F.ph = 'land'; F.t = 0; banner('降落充電中！快打！', '#ffd040'); Audio2.sfx('land'); }
+  } else if (F.ph === 'land') {
+    F.alt += (0 - F.alt) * 0.08;
+    if (F.t > 150) { F.ph = 'lift'; F.t = 0; Audio2.sfx('hover'); }
+  }
+  car.setAlt(F.alt);
+  if (F.alt > 2 && G.t % 2 === 0) for (const [wx, wy, wr] of car.wheels) part({ x: car.x + wx + rnd(-3, 3), y: car.y + wy + wr + 8, vy: rnd(0.8, 1.6), life: 14, col: pick(['#9ad8ff', '#ffffff', '#4ab0ff']) });
+}
 function updateRain() {
   if (stage.rain && R.time === stage.rain * 60) { R.rainT = 7 * 60; banner('下雨了！鍍膜過的地方不會留水斑', '#9ad8ff'); }
   if (R.rainT > 0) {
@@ -698,7 +742,7 @@ function setupStage(i) {
   const meter = P ? P.meter : 0;
   P = newPlayer(CHARS[G.chIdx]); P.meter = meter;
   projs = []; blobs = []; birds = []; poops = []; parts = []; pops = []; decals = [];
-  R = { time: stage.time * 60, cleanPts: 0, bonus: 0, maxCombo: 0, birds: 0, blobs: 0, hurt: 0, supers: 0, blobT: 60 * 3, birdT: 60 * 2.5, perfect: false, nextDing: 0.05, ms: {}, rainT: 0 };
+  R = { time: stage.time * 60, cleanPts: 0, bonus: 0, maxCombo: 0, birds: 0, blobs: 0, hurt: 0, supers: 0, blobT: 60 * 3, birdT: 60 * 2.5, perfect: false, nextDing: 0.05, ms: {}, rainT: 0, fly: stage.fly ? { ph: 'ground', t: 0, alt: 0 } : null };
   G.banner = null;
   SUP = null; G.flash = 0;
 }
@@ -713,7 +757,7 @@ function tickPlay() {
       if (R.time <= 600 && R.time > 0 && R.time % 60 === 0) Audio2.sfx('timeTick');
       updatePlayer(P);
       updateProjs(); updateBlobs(); updateBirds(); updatePoops(); updateParticles();
-      car.update(); checkMilestones(); updateRain();
+      car.update(); checkMilestones(); updateRain(); updateFly();
       decals.forEach(d => d.life--); decals = decals.filter(d => d.life > 0);
       if (--R.blobT <= 0) { if (blobs.length < stage.blobMax) spawnBlob(); R.blobT = Math.round(stage.blobEvery * 60 * rnd(0.8, 1.2)); }
       if (stage.birdEvery && --R.birdT <= 0) { if (birds.filter(b => b.st === 'fly').length < 2) spawnBird(); R.birdT = Math.round(stage.birdEvery * 60 * rnd(0.8, 1.2)); }
@@ -786,6 +830,7 @@ const SCENES = {
     update() { if (Input.realPressed && G.st > 10) { Audio2.unlock(); go('opening'); } },
     draw() {
       px(0, 0, W, H, '#000');
+      text(VERSION, W - 6, 6, { c: '#5a5a6a', a: 'r' });
       text('紅分子 亮車快打', W / 2, 80, { s: 2, c: '#ffd040', a: 'c', o: '#300', grad: ['#ffffff', '#ff8a10'] });
       if (G.t % 60 < 42) text(isTouch ? '點一下畫面開始（開啟音效）' : '按任意鍵開始（開啟音效）', W / 2, 124, { c: '#ffffff', a: 'c' });
       text('HJAEC SHINE BRAWL', W / 2, 190, { c: '#5a5a6a', a: 'c' });
@@ -900,6 +945,7 @@ const SCENES = {
     enter() { Audio2.play('title'); },
     update() {
       if (Input.pressed.start || Input.pressed.p || Input.pressed.k) { Audio2.unlock(); Audio2.sfx('confirm'); go('select'); return; }
+      if (Input.pressed.up) { Audio2.sfx('blip'); go('changes'); return; }
       if (G.st > 60 * 9) { G.rankHi = -1; go('ranking'); }
     },
     draw() {
@@ -927,7 +973,7 @@ const SCENES = {
       px(0, 186, W, 1, '#ff3a3a');
       if (G.t % 60 < 40) text(isTouch ? '點一下畫面開始' : 'PRESS ENTER 開始', W / 2, 192, { c: '#ffffff', a: 'c', o: '#000' });
       text('HI ' + String(G.hi).padStart(7, '0'), W - 6, 204, { c: '#ffd040', a: 'r', o: '#000' });
-      text('M 靜音', 6, 204, { c: '#8a8a9a', o: '#000' });
+      text(VERSION + '　↑ 更新紀錄　M 靜音', 6, 204, { c: '#8a8a9a', o: '#000' });
       text('把髒車打到發亮！', W / 2, 102, { c: '#ffd0d0', a: 'c', o: '#000' });
     },
   },
@@ -1030,12 +1076,14 @@ const SCENES = {
         for (let i = 0; i < 40; i++) { const q = car.randomCleanPixel(); if (q) twinkle(q[0], q[1]); }
       } else { Audio2.stop(); Audio2.sfx('gong'); }
       P.st = car.clean >= 0.5 ? 'win' : 'sad'; P.mv = null; SUP = null; P.inv = 0;
+      if (R.fly) { R.fly.ph = 'end'; }
       if (!P.ground) { P.y = floorAt(P.x); P.ground = true; }
       projs = []; poops = [];
       birds.forEach(b => { if (b.st === 'fly') { b.st = 'flee'; b.vy = -1.5; } });
       blobs.forEach(b => { b.dead = true; burst(b.x, b.y - 4, '#6b4a2b', 6, 1); });
     },
     update() {
+      if (R.fly) { R.fly.alt *= 0.9; car.setAlt(R.fly.alt); }
       updateParticles(); updateBirds(); car.update(); blobs = [];
       if (G.st % 3 === 0) { const q = car.randomCleanPixel(); if (q) twinkle(q[0], q[1]); }
       if (G.st > 170 || (G.st > 60 && (Input.pressed.start || Input.pressed.p))) go('result');
@@ -1120,7 +1168,7 @@ const SCENES = {
     enter() {
       G.demo = true; Audio2.quiet = true; Audio2.stop();
       this.prevCh = G.chIdx; G.chIdx = rndi(0, 3); P = null;
-      setupStage(rndi(0, 2)); P.meter = 60;
+      setupStage(rndi(0, STAGES.length - 1)); P.meter = 60;
       G.ai = { target: P.x, f: 0 };
     },
     exit(to) {
@@ -1137,6 +1185,35 @@ const SCENES = {
       drawPlay();
       if (G.t % 60 < 40) text('DEMO PLAY', W / 2, 60, { s: 2, c: '#ffffff', a: 'c', o: '#000', grad: ['#ffffff', '#ff8a10'] });
       text(isTouch ? '點一下畫面開始' : 'PRESS ENTER', W / 2, 88, { c: '#ffd040', a: 'c', o: '#000' });
+    },
+  },
+
+  changes: {
+    enter() {
+      // 先把更新紀錄排成一行一行（太長自動換行），可以上下捲動
+      this.lines = []; this.off = 0;
+      for (const [v, ...items] of CHANGELOG) {
+        items.forEach((it, k) => {
+          let rest = '・' + it, first = true;
+          while (rest.length) { this.lines.push([k === 0 && first ? v : '', rest.slice(0, 23)]); rest = rest.slice(23); first = false; if (rest) rest = '　' + rest; }
+        });
+        this.lines.push(['', '']);
+      }
+    },
+    update() {
+      const I = Input.pressed, max = Math.max(0, this.lines.length - 12);
+      if (I.down) this.off = Math.min(max, this.off + 3);
+      if (I.up) { if (this.off === 0 && G.st > 10) { go('title'); return; } this.off = Math.max(0, this.off - 3); }
+      if (G.st > 10 && (I.start || I.p || I.k || I.pause)) { Audio2.sfx('blip'); go('title'); }
+    },
+    draw() {
+      px(0, 0, W, H, '#0a0006');
+      text('更新紀錄', W / 2, 6, { s: 2, c: '#ffd040', a: 'c', o: '#300', grad: ['#ffffff', '#ffb020'] });
+      this.lines.slice(this.off, this.off + 12).forEach(([v, t], k) => {
+        if (v) text(v, 10, 38 + k * 13, { c: '#ff6060', o: '#000' });
+        text(t, 58, 38 + k * 13, { c: '#e0e0e8', o: '#000' });
+      });
+      text('↑↓ 捲動　攻擊鍵返回', W / 2, H - 14, { c: '#9ad8ff', a: 'c', o: '#000' });
     },
   },
 
@@ -1234,7 +1311,7 @@ const SCENES = {
       ctx.drawImage(portraitBig[ch.pIdx], 24, 24);
       drawChar(ch, 'win' + (Math.floor(G.t / 16) % 2), 80, 206, 1);
       const lines = [
-        ['三台車全部打亮！', '#ffd040', 2],
+        ['四台車全部打亮！', '#ffd040', 2],
         [ch.name + '：「' + QUOTES[ch.id][0], '#ffffff', 1],
         ['　' + QUOTES[ch.id][1] + '」', '#ffffff', 1],
         ['', '', 1],
@@ -1293,13 +1370,18 @@ function buildMat() {
   const basic = isTouch
     ? ['左搖桿：移動／往上跳／往下蹲', '拳・腳：普通攻擊', '飛彈・迴旋：直接放必殺', '超：能量滿放超必殺', 'START：暫停（有出招表）']
     : ['方向鍵／WASD：移動・↑跳・↓蹲', 'J 拳　K 腳', 'L 飛彈　I 迴旋（快捷）', '空白鍵：超必殺（能量滿）', 'Esc：暫停　M：靜音'];
-  let h = `<div class="mat-head">出招表 COMMAND LIST<button id="matToggle">收起</button></div><div class="mat-body">`;
+  let h = `<div class="mat-head">出招表 COMMAND LIST<span><button id="matLog">${VERSION} 更新紀錄</button> <button id="matToggle">收起</button></span></div><div class="mat-body">`;
   h += `<div class="card basic"><div class="nm">基本操作</div><ul>${basic.map(b => `<li>${b}</li>`).join('')}</ul></div>`;
   CHARS.forEach((ch, i) => {
     h += `<div class="card" data-i="${i}"><div class="top"><img src="${PORTRAITS[ch.pIdx]}" alt=""><div class="nm">${ch.name}<small>${ch.title}</small></div></div><ul>` +
       moveLines(ch).map(([c, n]) => `<li><b>${c}</b>${n}</li>`).join('') + `</ul></div>`;
   });
   mat.innerHTML = h + '</div>';
+  document.getElementById('matLog').addEventListener('click', () => {
+    const d = document.getElementById('logDlg');
+    d.querySelector('div').innerHTML = CHANGELOG.map(([v, ...it]) => `<h4>${v}</h4><ul>${it.map(x => `<li>${x}</li>`).join('')}</ul>`).join('');
+    d.showModal();
+  });
   document.getElementById('matToggle').addEventListener('click', () => {
     document.body.classList.toggle('mat-off'); fit();
     document.getElementById('matToggle').textContent = document.body.classList.contains('mat-off') ? '展開' : '收起';

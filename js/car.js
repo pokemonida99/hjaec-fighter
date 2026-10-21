@@ -42,6 +42,10 @@ const CAR_TYPES = {
   },
 };
 
+// 飛天電動車：沒有圖時借用轎車的外型
+CAR_TYPES.ev = JSON.parse(JSON.stringify(CAR_TYPES.sedan));
+CAR_TYPES.ev.name = '飛天電動車'; CAR_TYPES.ev.color = '#e8ecf0';
+
 // 車子放大到跟角色比例相稱
 const CAR_SCALE = 1.4;
 for (const T of Object.values(CAR_TYPES)) {
@@ -404,6 +408,9 @@ class Car {
     return null;
   }
 
+  // 離地高度（飛天電動車用）
+  setAlt(a) { this.alt = a; this.y = GY - this.h - Math.round(a); }
+
   hit(force) { this.bv += force; this.shake = Math.max(this.shake, 6); }
 
   update() {
@@ -445,10 +452,16 @@ class Car {
     const sx = this.shake ? (this.shake % 2 ? 1 : -1) : 0;
     const by = Math.round(clamp(this.bounce, -3, 3));
     const x = this.x + sx, y = this.y + by;
-    // 地面陰影＋倒影
-    ctx.fillStyle = 'rgba(0,0,0,.45)';
-    ctx.fillRect(this.x + 6, GY - 1, this.w - 12, 3);
-    if (reflect) {
+    // 地面陰影＋倒影（飛起來時影子變小變淡）
+    const alt = this.alt || 0, sk = Math.max(0.4, 1 - alt / 90);
+    ctx.fillStyle = `rgba(0,0,0,${0.45 * sk})`;
+    ctx.fillRect(Math.round(this.x + this.w / 2 - (this.w - 12) * sk / 2), GY - 1, Math.round((this.w - 12) * sk), 3);
+    if (alt > 1 && this.wheels) for (const [wx, wy, wr] of this.wheels) {     // 推進器噴焰
+      const fx = x + wx, fy = y + wy + wr - 2, L = 6 + ((G.t + wx) % 4) * 2;
+      ctx.fillStyle = 'rgba(80,200,255,.55)'; ctx.fillRect(Math.round(fx - 5), Math.round(fy), 10, L + 4);
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(Math.round(fx - 2), Math.round(fy), 4, L);
+    }
+    if (reflect && alt < 3) {
       ctx.save();
       ctx.globalAlpha = 0.16 + this.clean * 0.14;
       ctx.translate(x, GY * 2 + 1);

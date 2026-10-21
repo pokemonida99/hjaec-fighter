@@ -15,10 +15,16 @@ const STAGES = [
     products: [['玻璃油膜去除劑', '#e0b02a'], ['炫鑽玻璃鍍膜', '#7adcff']],
   },
   {
-    key: 'night', car: 'sports', music: 'fight3', title: 'FINAL ROUND', sub: '頂級鍍膜決戰', time: 50,
+    key: 'night', car: 'sports', music: 'fight3', title: 'ROUND 3', sub: '頂級鍍膜決戰', time: 50,
     dirt: { dust: 0.8, mud: 1.3, spots: 25, film: 1.1, tar: 26, poop: 4 },
     blobEvery: 5, blobMax: 3, birdEvery: 4.2, rain: 24,   // 剩 24 秒時下雨
     products: [['全能去污還原膏', '#3ac060'], ['奈米陶瓷封體鍍膜', '#e02a2a']],
+  },
+  {
+    key: 'pad', car: 'ev', music: 'fight4', title: 'FINAL ROUND', sub: '飛天電動車', time: 50, fly: true,
+    dirt: { dust: 0.8, mud: 1.0, spots: 22, film: 1.2, poop: 3 },
+    blobEvery: 5.5, blobMax: 2, birdEvery: 5,
+    products: [['炫鑽玻璃鍍膜', '#7adcff'], ['全效環保去汙劑', '#e02a2a']],
   },
 ];
 
@@ -174,7 +180,7 @@ function buildBG(key) {
     ctx.drawImage(BG_IMG[key], 0, 0);
     const st = STAGES.find(x => x.key === key);
     (st && st.signs || []).forEach(([x, y, str, o]) => text(str, x, y, Object.assign({ a: 'c' }, o)));
-  } else BG[key]();
+  } else (BG[key] || BG.night)();
   ctx.restore();
   const [c, g] = mkCanvas(W, H);
   g.drawImage(cv, 0, 0);

@@ -100,6 +100,8 @@ const Audio2 = (() => {
     lights() { const t = ac.currentTime; tone('square', 1200, 1200, 0.04, 0.12, sfxBus, t); tone('square', 1600, 1600, 0.06, 0.12, sfxBus, t + 0.06); },
     rain() { noise(2.5, 0.25, 'highpass', 3000, 5000); },
     letter() { tone('pulse', 1200, 1200, 0.04, 0.15); },
+    hover() { tone('sawtooth', 60, 220, 1.2, 0.14); noise(1.2, 0.3, 'bandpass', 300, 1500, sfxBus, undefined, 1.5); },
+    land() { tone('sawtooth', 220, 60, 0.9, 0.12); noise(0.6, 0.25, 'lowpass', 1500, 200); },
     // 開場、選角、結局
     whoosh() { noise(0.35, 0.45, 'bandpass', 400, 4000, sfxBus, undefined, 1.2); },
     whoosh2() { noise(0.28, 0.35, 'bandpass', 600, 5000, sfxBus, undefined, 1.6); },
@@ -224,6 +226,21 @@ const Audio2 = (() => {
         D2 D2 D3 D2 D2 D3 D2 D3 D2 D2 D3 D2 D2 D3 D2 D3  A#1 A#1 A#2 A#1 A#1 A#2 A#1 A#2 A#1 A#1 A#2 A#1 A#1 A#2 A#1 A#2
         C2 C2 C3 C2 C2 C3 C2 C3 C2 C2 C3 C2 C2 C3 C2 C3  A1 A1 A2 A1 A1 A2 A1 A2 A1 A1 A2 A1 A1 A2 C#2 E2`),
       drum: 'k.hsk.hsk.hsk.ss',
+    },
+    // 最終關：飛天電動車（B 小調未來感）
+    fight4: {
+      bpm: 150, len: 64,
+      lead: parse(`
+        B4 . D5 . F#5 . B5 . A5 . F#5 . D5 . F#5 .  G5 . . . F#5 . D5 . B4 . D5 . F#5 . . .
+        E5 . G5 . B5 . G5 . F#5 . A5 . C#6 . A5 .  B5 . . . F#5 . . . D5 . . . C#5 . . .`),
+      lead2: parse(`
+        F#4 . . . B4 . . . D5 . . . B4 . . .  D5 . . . B4 . . . G4 . . . B4 . . .
+        B4 . . . E5 . . . C#5 . . . E5 . . .  D5 . . . B4 . . . F#4 . . . A#4 . . .`),
+      arp: ['B3 D4 F#4', 'G3 B3 D4', 'E4 G4 B4', 'F#3 A#3 C#4'],
+      bass: parse(`
+        B1 . B2 . B1 B1 B2 . B1 . B2 . B1 B1 B2 .  G1 . G2 . G1 G1 G2 . G1 . G2 . G1 G1 G2 .
+        E2 . E3 . E2 E2 E3 . E2 . E3 . E2 E2 E3 .  F#2 . F#3 . F#2 F#2 F#3 . F#2 . F#3 . A#2 . C#3 .`),
+      drum: 'k.hok.hsk.hok.hs',
     },
     hurry: {
       bpm: 176, len: 64,
