@@ -100,6 +100,23 @@ const Audio2 = (() => {
     lights() { const t = ac.currentTime; tone('square', 1200, 1200, 0.04, 0.12, sfxBus, t); tone('square', 1600, 1600, 0.06, 0.12, sfxBus, t + 0.06); },
     rain() { noise(2.5, 0.25, 'highpass', 3000, 5000); },
     letter() { tone('pulse', 1200, 1200, 0.04, 0.15); },
+    // 開場、選角、結局
+    whoosh() { noise(0.35, 0.45, 'bandpass', 400, 4000, sfxBus, undefined, 1.2); },
+    whoosh2() { noise(0.28, 0.35, 'bandpass', 600, 5000, sfxBus, undefined, 1.6); },
+    impact() { tone('sine', 90, 35, 0.4, 1); noise(0.3, 0.6, 'lowpass', 3000, 150); tone('square', 60, 40, 0.15, 0.15); },
+    cursor() { const t = ac.currentTime; tone('pulse', 1046, 1046, 0.04, 0.14, sfxBus, t); tone('pulse', 1568, 1568, 0.05, 0.1, sfxBus, t + 0.04); },
+    decide() { const t = ac.currentTime; [523, 659, 784, 1047].forEach((f, i) => tone('pulse', f, f, 0.18, 0.18, sfxBus, t + i * 0.05)); noise(0.5, 0.3, 'highpass', 4000, 8000, sfxBus, t); },
+    rocket() { tone('sine', 400, 1800, 0.5, 0.12); noise(0.5, 0.15, 'highpass', 3000, 7000); },
+    firework() { tone('sine', 120, 40, 0.4, 0.7); noise(0.7, 0.5, 'lowpass', 6000, 300); const t = ac.currentTime; for (let i = 0; i < 6; i++) noise(0.05, 0.25, 'highpass', 6000, 6000, sfxBus, t + 0.2 + i * 0.07); },
+    // 選角時每個角色的代表音
+    ch_boss() { const t = ac.currentTime; [65, 98, 131].forEach(f => tone('sawtooth', f, f, 0.5, 0.14, sfxBus, t)); noise(0.4, 0.3, 'lowpass', 800, 100, sfxBus, t); },
+    ch_sailor() { const t = ac.currentTime; tone('sine', 1500, 2100, 0.15, 0.2, sfxBus, t); tone('sine', 1500, 2100, 0.2, 0.2, sfxBus, t + 0.18); },
+    ch_hong() { const t = ac.currentTime; noise(0.12, 0.4, 'highpass', 5000, 7000, sfxBus, t); noise(0.18, 0.4, 'highpass', 5000, 7000, sfxBus, t + 0.16); },
+    ch_fen() { noise(0.08, 0.7, 'bandpass', 2500, 5000, sfxBus, undefined, 3); tone('square', 1800, 600, 0.06, 0.1); },
+    ch_kuri() { const t = ac.currentTime; [2093, 2637, 3136].forEach((f, i) => tone('triangle', f, f, 0.2, 0.12, sfxBus, t + i * 0.06)); },
+    ch_rin() { const t = ac.currentTime; for (let i = 0; i < 4; i++) tone('square', i % 2 ? 1250 : 1000, i % 2 ? 1250 : 1000, 0.05, 0.08, sfxBus, t + i * 0.05); },
+    ch_leo() { tone('sine', 80, 30, 0.35, 1); noise(0.2, 0.4, 'lowpass', 600, 80); },
+    ch_momo() { const t = ac.currentTime; tone('sine', 700, 1400, 0.12, 0.2, sfxBus, t); tone('triangle', 1760, 1760, 0.2, 0.1, sfxBus, t + 0.12); },
   };
 
   // ---------- 配樂：簡易步進音序器 ----------
@@ -110,25 +127,67 @@ const Audio2 = (() => {
   };
   const parse = s => s.trim().split(/\s+/).map(x => x === '.' ? null : x === '-' ? '-' : x);
 
-  // 原創旋律（A 小調／C 大調），一格 = 十六分音符
+  // 原創配樂，一格 = 十六分音符。lead 主旋律／lead2 和聲／arp 和弦琶音（每段一個和弦）／bass／drum
+  // drum：k 大鼓 s 小鼓 h 閉鈸 o 開鈸 c 銅鈸
   const SONGS = {
+    // 開場動畫（約 7 秒，跟畫面事件對拍）
+    opening: {
+      bpm: 132, len: 64, once: true,
+      lead: parse(`
+        C5 . . . . . . . G4 . C5 . E5 . G5 .  C6 . . . G5 . . . A5 . . . G5 . . .
+        F5 . A5 . C6 . A5 . G5 . B5 . D6 . B5 .  C6 . . . . . . . . . . . . . . .`),
+      lead2: parse(`
+        G4 . . . . . . . E4 . G4 . C5 . E5 .  E5 . . . E5 . . . F5 . . . E5 . . .
+        C5 . F5 . A5 . F5 . D5 . G5 . B5 . G5 .  E5 . . . . . . . . . . . . . . .`),
+      arp: ['C4 E4 G4', 'A3 C4 E4', 'F3 A3 C4', 'C4 E4 G4'],
+      bass: parse(`
+        C2 . . . . . . . G2 . . . G2 . . .  A2 . . . E2 . . . F2 . . . G2 . . .
+        F2 . F2 . F2 . F2 . G2 . G2 . G2 . G2 .  C2 . . . . . . . . . . . . . . .`),
+      drum: 'c.......k...s.s.k...s...k...s...k.k.s.k.k.k.sssscc..............',
+    },
     title: {
       bpm: 112, len: 64,
       lead: parse(`
         E5 . . . D5 . C5 . D5 . . . E5 . G5 .  A5 . . . G5 . E5 . D5 . . . . . . .
         C5 . . . D5 . E5 . G5 . . . E5 . D5 .  E5 . . . . . . . . . . . . . . .`),
+      lead2: parse(`
+        C5 . . . B4 . A4 . B4 . . . C5 . E5 .  F5 . . . E5 . C5 . A4 . . . . . . .
+        E4 . . . G4 . C5 . E5 . . . C5 . B4 .  G#4 . . . . . . . . . . . . . . .`),
+      arp: ['A3 C4 E4', 'F3 A3 C4', 'C4 E4 G4', 'E3 G#3 B3'],
       bass: parse(`
         A2 . . . A3 . . . A2 . . . A3 . . .  F2 . . . F3 . . . F2 . . . F3 . . .
         C3 . . . C4 . . . G2 . . . G3 . . .  E2 . . . E3 . . . E2 . . . G#2 . . .`),
       drum: 'k...h...s...h...k...h...s...h.h.',
     },
-    stage: {
+    // 選角：輕快的 C 大調
+    select: {
+      bpm: 126, len: 64,
+      lead: parse(`
+        E5 . G5 . C6 . G5 . A5 . G5 . E5 . D5 .  C5 . E5 . A5 . E5 . G5 . E5 . C5 . . .
+        F5 . A5 . C6 . A5 . G5 . F5 . E5 . F5 .  G5 . . . D5 . G5 . B5 . A5 . G5 . . .`),
+      lead2: parse(`
+        C5 . . . E5 . . . F5 . . . C5 . . .  A4 . . . C5 . . . E5 . . . A4 . . .
+        A4 . . . C5 . . . E5 . . . C5 . . .  B4 . . . . . D5 . G5 . . . D5 . . .`),
+      arp: ['C4 E4 G4', 'A3 C4 E4', 'F3 A3 C4', 'G3 B3 D4'],
+      bass: parse(`
+        C3 . . C3 . . G2 . C3 . . C3 . . G2 .  A2 . . A2 . . E2 . A2 . . A2 . . E2 .
+        F2 . . F2 . . C3 . F2 . . F2 . . C3 .  G2 . . G2 . . D3 . G2 . . G2 B2 . D3 .`),
+      drum: 'k..hs.h.k.khs.ho',
+    },
+    // 第一關：車庫（A 小調搖滾）
+    fight1: {
       bpm: 152, len: 128,
       lead: parse(`
         A4 . C5 . E5 . A5 . G5 . E5 . D5 . E5 .  F5 . E5 . C5 . A4 . C5 . D5 . E5 . . .
         D5 . B4 . G4 . B4 . D5 . G5 . F5 . D5 .  E5 . . . G#4 . B4 . E5 . . . . . . .
         A5 . . . G5 . . . E5 . . . C5 . D5 .  E5 . F5 . E5 . D5 . C5 . . . A4 . . .
         B4 . C5 . D5 . . . G5 . F5 . E5 . D5 .  E5 . . . . . . . E5 . F#5 . G#5 . B5 .`),
+      lead2: parse(`
+        E4 . . . C5 . . . E5 . . . B4 . . .  C5 . . . A4 . . . F4 . . . C5 . . .
+        B4 . . . G4 . . . B4 . . . D5 . . .  B4 . . . E4 . . . G#4 . . . . . . .
+        E5 . . . D5 . . . C5 . . . A4 . . .  C5 . . . C5 . . . A4 . . . F4 . . .
+        G4 . . . B4 . . . D5 . . . B4 . . .  G#4 . . . . . . . B4 . D5 . E5 . G#5 .`),
+      arp: ['A3 C4 E4', 'F3 A3 C4', 'G3 B3 D4', 'E3 G#3 B3', 'A3 C4 E4', 'F3 A3 D4', 'G3 B3 D4', 'E3 G#3 B3'],
       bass: parse(`
         A2 . A3 . A2 . A3 . A2 . A3 . A2 . A3 .  F2 . F3 . F2 . F3 . F2 . F3 . F2 . F3 .
         G2 . G3 . G2 . G3 . G2 . G3 . G2 . G3 .  E2 . E3 . E2 . E3 . E2 . E3 . E2 . E3 .
@@ -136,11 +195,42 @@ const Audio2 = (() => {
         G2 . G3 . G2 . G3 . B2 . B3 . B2 . B3 .  E2 . E3 . E2 . E3 . E2 . E3 . G#2 . G#3 .`),
       drum: 'k.h.s.h.k.k.s.h.k.h.s.h.k.h.s.ss',
     },
+    // 第二關：夕陽洗車站（E 小調律動）
+    fight2: {
+      bpm: 140, len: 64,
+      lead: parse(`
+        E5 . . B4 . E5 . G5 . F#5 . E5 . D5 . B4  C5 . . . E5 . G5 . A5 . G5 . E5 . . .
+        D5 . . A4 . D5 . F#5 . E5 . D5 . C5 . A4  B4 . D#5 . F#5 . B5 . A5 . F#5 . D#5 . B4 .`),
+      lead2: parse(`
+        B4 . . . . . . . D5 . . . B4 . . .  G4 . . . . . . . E5 . . . C5 . . .
+        A4 . . . . . . . C5 . . . A4 . . .  F#4 . . . B4 . . . D#5 . . . B4 . . .`),
+      arp: ['E4 G4 B4', 'C4 E4 G4', 'D4 F#4 A4', 'B3 D#4 F#4'],
+      bass: parse(`
+        E2 . E3 . E2 . E3 . E2 . E3 . E2 . D3 .  C2 . C3 . C2 . C3 . C2 . C3 . C2 . B2 .
+        D2 . D3 . D2 . D3 . D2 . D3 . D2 . C3 .  B1 . B2 . B1 . B2 . B1 . B2 . A2 . F#2 .`),
+      drum: 'k.h.s.hkk.h.s.ho',
+    },
+    // 最終關：夜晚街頭（D 小調高速）
+    fight3: {
+      bpm: 160, len: 64,
+      lead: parse(`
+        D5 . F5 . A5 . D6 . C6 . A5 . F5 . A5 .  A#5 . . . A5 . F5 . D5 . F5 . A5 . . .
+        G5 . E5 . C5 . E5 . G5 . C6 . A#5 . G5 .  A5 . . . C#5 . E5 . A5 . . . G5 . E5 .`),
+      lead2: parse(`
+        A4 . . . D5 . . . F5 . . . D5 . . .  F5 . . . D5 . . . A#4 . . . D5 . . .
+        E5 . . . C5 . . . E5 . . . G5 . . .  E5 . . . A4 . . . C#5 . . . E5 . . .`),
+      arp: ['D4 F4 A4', 'A#3 D4 F4', 'C4 E4 G4', 'A3 C#4 E4'],
+      bass: parse(`
+        D2 D2 D3 D2 D2 D3 D2 D3 D2 D2 D3 D2 D2 D3 D2 D3  A#1 A#1 A#2 A#1 A#1 A#2 A#1 A#2 A#1 A#1 A#2 A#1 A#1 A#2 A#1 A#2
+        C2 C2 C3 C2 C2 C3 C2 C3 C2 C2 C3 C2 C2 C3 C2 C3  A1 A1 A2 A1 A1 A2 A1 A2 A1 A1 A2 A1 A1 A2 C#2 E2`),
+      drum: 'k.hsk.hsk.hsk.ss',
+    },
     hurry: {
       bpm: 176, len: 64,
       lead: parse(`
         A5 . E5 . A5 . E5 . G5 . E5 . G5 . E5 .  F5 . C5 . F5 . C5 . E5 . B4 . E5 . B4 .
         D5 . A4 . D5 . A4 . C5 . A4 . C5 . A4 .  B4 . G#4 . B4 . E5 . G#5 . . . B5 . . .`),
+      arp: ['A3 C4 E4', 'F3 A3 C4', 'D4 F4 A4', 'E3 G#3 B3'],
       bass: parse(`
         A2 A3 A2 A3 A2 A3 A2 A3 A2 A3 A2 A3 A2 A3 A2 A3  F2 F3 F2 F3 F2 F3 F2 F3 F2 F3 F2 F3 F2 F3 F2 F3
         D3 D4 D3 D4 D3 D4 D3 D4 D3 D4 D3 D4 D3 D4 D3 D4  E2 E3 E2 E3 E2 E3 E2 E3 E2 E3 E2 E3 E2 E3 E2 E3`),
@@ -149,18 +239,31 @@ const Audio2 = (() => {
     result: {
       bpm: 120, len: 32, once: true,
       lead: parse(`C5 . E5 . G5 . C6 . . . G5 . C6 . . .  D6 . . . B5 . . . C6 . . . . . . .`),
+      lead2: parse(`G4 . C5 . E5 . G5 . . . E5 . G5 . . .  B5 . . . G5 . . . E5 . . . . . . .`),
       bass: parse(`C3 . . . C3 . . . E3 . . . E3 . . .  G2 . . . G2 . . . C3 . . . . . . .`),
-      drum: 'k.......k.......k...s...k.s.s...',
+      drum: 'k.......k.......k...s...k.s.s.c.',
     },
+    // 結局：溫暖的 C 大調，比較長
     ending: {
-      bpm: 100, len: 64,
+      bpm: 104, len: 128,
       lead: parse(`
         C5 . . . E5 . . . G5 . . . A5 . G5 .  F5 . . . E5 . . . D5 . . . . . . .
-        E5 . . . G5 . . . C6 . . . B5 . A5 .  G5 . . . . . . . . . . . . . . .`),
+        E5 . . . G5 . . . C6 . . . B5 . A5 .  G5 . . . . . . . . . E5 . F5 . G5 .
+        A5 . . . G5 . . . F5 . . . E5 . D5 .  E5 . . . C5 . . . A4 . . . C5 . . .
+        D5 . . . E5 . F5 . G5 . . . D6 . B5 .  C6 . . . . . . . . . . . . . . .`),
+      lead2: parse(`
+        E4 . . . G4 . . . C5 . . . C5 . . .  A4 . . . C5 . . . A4 . . . . . . .
+        C5 . . . E5 . . . E5 . . . D5 . C5 .  B4 . . . . . . . . . C5 . D5 . E5 .
+        F5 . . . E5 . . . C5 . . . C5 . B4 .  C5 . . . A4 . . . F4 . . . A4 . . .
+        B4 . . . C5 . D5 . D5 . . . F5 . D5 .  E5 . . . . . . . . . . . . . . .`),
+      arp: ['C4 E4 G4', 'F3 A3 C4', 'D4 F4 A4', 'G3 B3 D4', 'C4 E4 G4', 'E3 G#3 B3', 'A3 C4 E4', 'G3 B3 D4',
+            'F3 A3 C4', 'C4 E4 G4', 'A3 C4 E4', 'F3 A3 C4', 'D4 F4 A4', 'G3 B3 D4', 'C4 E4 G4', 'C4 E4 G4'],
       bass: parse(`
         C3 . G3 . C3 . G3 . F2 . C3 . F2 . C3 .  D3 . A3 . D3 . A3 . G2 . D3 . G2 . D3 .
-        C3 . G3 . C3 . G3 . F2 . C3 . F2 . C3 .  G2 . D3 . G2 . D3 . C3 . G3 . C3 . . .`),
-      drum: 'k...h...s...h...k...h...s...h...',
+        C3 . G3 . C3 . G3 . E2 . B2 . E2 . B2 .  A2 . E3 . A2 . E3 . G2 . D3 . G2 . D3 .
+        F2 . C3 . F2 . C3 . C3 . G3 . C3 . G3 .  A2 . E3 . A2 . E3 . F2 . C3 . F2 . C3 .
+        D3 . A3 . D3 . A3 . G2 . D3 . G2 . D3 .  C3 . G3 . C3 . G3 . C3 . . . . . . .`),
+      drum: 'k...h...s...h...k...h...s...h.o.',
     },
   };
 
@@ -170,14 +273,20 @@ const Audio2 = (() => {
     while (nextT < ac.currentTime + 0.12) {
       const i = step % song.len;
       const ln = song.lead[i], bs = song.bass[i % song.bass.length], dr = song.drum[i % song.drum.length];
-      if (ln && ln !== '-') {
-        let d = 1; while (song.lead[(i + d) % song.len] === null && d < 8) d++;
-        tone('pulse', NOTE(ln), NOTE(ln), spb * d * 0.95, 0.2, musBus, nextT, 0.25);
+      const dur = arr => { let d = 1; while (arr[(i + d) % song.len] === null && d < 8) d++; return d; };
+      if (ln && ln !== '-') tone('pulse', NOTE(ln), NOTE(ln), spb * dur(song.lead) * 0.95, 0.2, musBus, nextT, 0.25);
+      if (song.lead2) { const l2 = song.lead2[i]; if (l2 && l2 !== '-') tone('pulse', NOTE(l2), NOTE(l2), spb * dur(song.lead2) * 0.9, 0.09, musBus, nextT, 0.5); }
+      if (song.arp) {                      // 和弦琶音：每格輪流彈和弦裡的一個音
+        const seg = song.len / song.arp.length, ch = song.arp[Math.floor(i / seg)].split(' ');
+        const n = ch[i % ch.length];
+        tone('pulse', NOTE(n) * 2, NOTE(n) * 2, spb * 0.8, 0.045, musBus, nextT, 0.125);
       }
       if (bs && bs !== '-') tone('triangle', NOTE(bs), NOTE(bs), spb * 1.8, 0.55, musBus, nextT);
       if (dr === 'k') { tone('sine', 140, 45, 0.12, 0.9, musBus, nextT); }
-      else if (dr === 's') noise(0.1, 0.45, 'bandpass', 1800, 1200, musBus, nextT, 0.7);
+      else if (dr === 's') { noise(0.1, 0.45, 'bandpass', 1800, 1200, musBus, nextT, 0.7); tone('triangle', 220, 160, 0.06, 0.2, musBus, nextT); }
       else if (dr === 'h') noise(0.03, 0.2, 'highpass', 8000, 8000, musBus, nextT);
+      else if (dr === 'o') noise(0.18, 0.18, 'highpass', 7000, 7000, musBus, nextT);
+      else if (dr === 'c') noise(1.0, 0.35, 'highpass', 5000, 3000, musBus, nextT);
       nextT += spb; step++;
       if (song.once && step >= song.len) { song = null; return; }
     }

@@ -42,11 +42,41 @@ def bg(key):
     return im.quantize(colors=96, method=Image.Quantize.MAXCOVERAGE, dither=Image.Dither.NONE).convert('RGB')
 
 
+def products():
+    # 開場動畫用的四瓶商品：去洋紅底，依空白欄切成四個，最高約 72px
+    im = Image.open('work/art/products.png').convert('RGBA'); px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if is_mag(r, g, b): px[x, y] = (0, 0, 0, 0)
+    cols = [any(px[x, y][3] for y in range(0, im.height, 2)) for x in range(im.width)]
+    runs, start = [], None
+    for x, c in enumerate(cols + [False]):
+        if c and start is None: start = x
+        if not c and start is not None:
+            if x - start > 20: runs.append((start, x))
+            start = None
+    items = [im.crop((a, 0, b, im.height)).crop(im.crop((a, 0, b, im.height)).getbbox()) for a, b in runs]
+    k = 72 / max(i.height for i in items)
+    out = []
+    for it in items:
+        sm = it.resize((max(1, round(it.width * k)), max(1, round(it.height * k))), Image.LANCZOS); p2 = sm.load()
+        for y in range(sm.height):
+            for x in range(sm.width):
+                r, g, b, a = p2[x, y]
+                p2[x, y] = (0, 0, 0, 0) if a < 140 or is_mag(r, g, b) else (r, g, b, 255)
+        out.append(sm)
+    return out
+
+
+prods = products()
+print('products', [p.size for p in prods])
 cars = {k: car(k) for k in CAR_W}
 bgs = {k: bg(k) for k in BGS}
 for k, v in cars.items(): print('car', k, v.size)
 open('js/art_data.js', 'w').write('// 由 tools/stage_art.py 產生，勿手改\nwindow.CAR_ART = ' + json.dumps({k: url(v) for k, v in cars.items()}) +
-                                  ';\nwindow.BG_ART = ' + json.dumps({k: url(v) for k, v in bgs.items()}) + ';\n')
+                                  ';\nwindow.BG_ART = ' + json.dumps({k: url(v) for k, v in bgs.items()}) +
+                                  ';\nwindow.PRODUCT_ART = ' + json.dumps([url(p) for p in prods]) + ';\n')
 if len(sys.argv) > 1:
     out = Image.new('RGB', (W * 3, H * 2), (255, 0, 255))
     for i, k in enumerate(BGS): out.paste(bgs[k], (i * W, 0))

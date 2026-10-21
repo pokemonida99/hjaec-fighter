@@ -2,20 +2,20 @@
 'use strict';
 const STAGES = [
   {
-    key: 'garage', car: 'sedan', title: 'ROUND 1', sub: '預洗開打！', time: 45,
+    key: 'garage', car: 'sedan', music: 'fight1', title: 'ROUND 1', sub: '預洗開打！', time: 45,
     signs: [[195, 29, '紅分子', { s: 2, c: '#ff3a3a', o: '#3a0000' }], [195, 66, 'HJAEC 汽車美容', { c: '#ffffff', o: '#5a0000' }]],
     dirt: { dust: 0.6, mud: 1.1, spots: 18, film: 0.5 },
     blobEvery: 8, blobMax: 1, birdEvery: 0,
     products: [['超效除汙高泡濃縮洗車精', '#e02a2a'], ['水垢水斑去除劑', '#2a9ae0']],
   },
   {
-    key: 'sunset', car: 'suv', title: 'ROUND 2', sub: '玻璃油膜大作戰', time: 45,
+    key: 'sunset', car: 'suv', music: 'fight2', title: 'ROUND 2', sub: '玻璃油膜大作戰', time: 45,
     dirt: { dust: 0.7, mud: 1.2, spots: 22, film: 1.3, poop: 2 },
     blobEvery: 6.5, blobMax: 2, birdEvery: 5.5,
     products: [['玻璃油膜去除劑', '#e0b02a'], ['炫鑽玻璃鍍膜', '#7adcff']],
   },
   {
-    key: 'night', car: 'sports', title: 'FINAL ROUND', sub: '頂級鍍膜決戰', time: 50,
+    key: 'night', car: 'sports', music: 'fight3', title: 'FINAL ROUND', sub: '頂級鍍膜決戰', time: 50,
     dirt: { dust: 0.8, mud: 1.3, spots: 25, film: 1.1, tar: 26, poop: 4 },
     blobEvery: 5, blobMax: 3, birdEvery: 4.2, rain: 24,   // 剩 24 秒時下雨
     products: [['全能去污還原膏', '#3ac060'], ['奈米陶瓷封體鍍膜', '#e02a2a']],

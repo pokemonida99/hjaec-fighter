@@ -49,6 +49,9 @@ let P = null, car = null, bg = null, stage = null;
 let projs = [], blobs = [], birds = [], poops = [], parts = [], pops = [], decals = [];
 let R = null;   // 本關紀錄
 
+// 開場商品：圖是 GPT 畫的示意瓶（tools/stage_art.py → PRODUCT_ART），名稱取自紅分子官網
+const PROD = [['奈米陶瓷', '封體鍍膜'], ['超效除汙', '高泡洗車精'], ['炫鑽玻璃', '鍍膜'], ['全效環保', '去汙劑']];
+const productImg = (window.PRODUCT_ART || []).map(u => { const im = new Image(); im.src = u; return im; });
 const portraitImg = {}, portraitBig = {};
 for (const k of Object.keys(PORTRAITS_BIG)) { const im = new Image(); im.src = PORTRAITS_BIG[k]; portraitBig[k] = im; }
 const portraitSmall = {}, portraitMid = {};
@@ -776,8 +779,111 @@ function drawPause() {
 
 const SCENES = {
   boot: {
-    update() { if (G.st > 1) go('title'); },
-    draw() { px(0, 0, W, H, '#000'); },
+    update() { if (Input.realPressed && G.st > 10) { Audio2.unlock(); go('opening'); } },
+    draw() {
+      px(0, 0, W, H, '#000');
+      text('紅分子 亮車快打', W / 2, 80, { s: 2, c: '#ffd040', a: 'c', o: '#300', grad: ['#ffffff', '#ff8a10'] });
+      if (G.t % 60 < 42) text(isTouch ? '點一下畫面開始（開啟音效）' : '按任意鍵開始（開啟音效）', W / 2, 124, { c: '#ffffff', a: 'c' });
+      text('HJAEC SHINE BRAWL', W / 2, 190, { c: '#5a5a6a', a: 'c' });
+    },
+  },
+
+  // 開場動畫：品牌 → 商品 → 角色 → 擦亮車子 → 標題（約 7 秒，跟開場曲對拍）
+  opening: {
+    enter() {
+      Audio2.play('opening'); Audio2.sfx('whoosh');
+      this.car = new Car('sedan', { dust: 0.8, mud: 1.3, spots: 14, film: 0.9 });
+      this.car.x = Math.round(W / 2 - this.car.w / 2); this.car.y = 180 - this.car.h;
+      parts = []; pops = [];
+    },
+    update() {
+      const f = G.st, BAR = 109;
+      if (Input.realPressed && f > 8) { go('title'); return; }
+      if (f === 60) Audio2.sfx('sparkle');
+      for (let k = 0; k < 4; k++) if (f === BAR + k * 27) Audio2.sfx('impact');
+      for (let k = 0; k < 8; k++) if (f === BAR * 2 + Math.round(k * 13.6)) Audio2.sfx(k % 2 ? 'whoosh2' : 'whoosh');
+      if (f === BAR * 3) Audio2.sfx('whoosh');
+      if (f === BAR * 3 + 30) { this.car.cleanAll(99); Audio2.sfx('sparkle'); for (let i = 0; i < 30; i++) { const q = this.car.randomCleanPixel(); if (q) twinkle(q[0], q[1]); } }
+      if (f === BAR * 3 + 40) { Audio2.sfx('stamp'); G.shake = 10; }
+      if (f > BAR * 3 + 30 && f % 3 === 0) { const q = this.car.randomCleanPixel(); if (q) twinkle(q[0], q[1]); }
+      updateParticles();
+      if (f >= BAR * 4 + 20) go('title');
+    },
+    draw() {
+      const f = G.st, BAR = 109;
+      ctx.save();
+      if (G.shake > 0) { G.shake--; ctx.translate(rndi(-3, 3), rndi(-2, 2)); }
+      if (f < BAR) {                                   // 1. 品牌
+        px(0, 0, W, H, '#000');
+        const k = Math.min(1, f / 14);
+        px(0, H / 2 - 1, W * k, 2, '#ff2a2a');
+        if (f > 10) {
+          const s = f < 18 ? 6 - (f - 10) * 0.25 : 4;
+          text('紅分子', W / 2, 62 - (s - 4) * 6, { s: Math.round(s), c: '#ff3030', a: 'c', o: '#300', grad: ['#ff8080', '#c80010'] });
+        }
+        if (f > 40) text('HJAEC 汽車美容　presents', W / 2, 128, { c: '#ffffff', a: 'c' });
+        if (f > 56 && f < 92) {                        // 光掃過字
+          const x = (f - 56) * 12 - 40;
+          ctx.fillStyle = 'rgba(255,255,255,.55)';
+          ctx.beginPath(); ctx.moveTo(x, 50); ctx.lineTo(x + 10, 50); ctx.lineTo(x - 10, 115); ctx.lineTo(x - 20, 115); ctx.fill();
+        }
+      } else if (f < BAR * 2) {                        // 2. 商品
+        const g = f - BAR;
+        px(0, 0, W, H, '#1a0006');
+        for (let i = 0; i < 14; i++) {
+          const a = i / 14 * Math.PI * 2 + f * 0.01;
+          ctx.fillStyle = i % 2 ? 'rgba(255,40,60,.16)' : 'rgba(255,200,60,.08)';
+          ctx.beginPath(); ctx.moveTo(W / 2, 110); ctx.lineTo(W / 2 + Math.cos(a) * 420, 110 + Math.sin(a) * 420); ctx.lineTo(W / 2 + Math.cos(a + 0.22) * 420, 110 + Math.sin(a + 0.22) * 420); ctx.fill();
+        }
+        text('紅分子 汽車美容系列', W / 2, 14, { c: '#ffd040', a: 'c', o: '#300' });
+        PROD.forEach((pr, i) => {
+          const t0 = i * 27, gx = 48 + i * 96;
+          if (g < t0) return;
+          const x = g - t0 < 10 ? gx + (10 - (g - t0)) * 40 : gx;
+          const im = productImg[i];
+          if (im && im.complete) ctx.drawImage(im, Math.round(x - im.width / 2), 150 - im.height);
+          px(x - 30, 150, 60, 2, '#ff3030');
+          if (g - t0 > 8) {
+            text(pr[0], x, 158, { c: '#ffffff', a: 'c', o: '#000' });
+            text(pr[1], x, 172, { c: '#ff9090', a: 'c', o: '#000' });
+          }
+        });
+      } else if (f < BAR * 3) {                        // 3. 角色
+        const g = f - BAR * 2;
+        px(0, 0, W, H, '#0a0006');
+        CHARS.forEach((ch, i) => {
+          const t0 = Math.round(i * 13.6);
+          if (g < t0) return;
+          const x0 = i * 48, slide = Math.max(0, 12 - (g - t0)) * 18;
+          ctx.save();
+          ctx.beginPath(); ctx.moveTo(x0 + 8, 0); ctx.lineTo(x0 + 56, 0); ctx.lineTo(x0 + 48, H); ctx.lineTo(x0, H); ctx.clip();
+          px(x0 - 8, 0, 72, H, i < 4 ? '#3a0008' : '#081a3a');
+          const im = portraitBig[ch.pIdx];
+          if (im && im.complete) ctx.drawImage(im, x0 - 28, 40 - slide + (i % 2) * 16);
+          ctx.restore();
+          px(x0, 0, 2, H, '#000');
+          text(ch.name, x0 + 26, 176 + (i % 2) * 14, { c: '#ffffff', a: 'c', o: '#000' });
+        });
+        if (g > 60) text(G.t % 20 < 14 ? '８位洗車戰士　登場！' : '', W / 2, 10, { c: '#ffd040', a: 'c', o: '#000' });
+      } else {                                         // 4. 擦亮車子 → 標題
+        const g = f - BAR * 3, c = this.car;
+        px(0, 0, W, H, '#05050c');
+        for (let y = 180; y < H; y += 4) px(0, y, W, 2, '#101018');
+        ctx.drawImage(c.base, c.x, c.y);
+        const sx = c.x + Math.min(c.w + 20, g * 9) - 10;
+        ctx.save(); ctx.beginPath(); ctx.rect(sx, 0, W, H); ctx.clip(); ctx.drawImage(c.dirtC, c.x, c.y); ctx.restore();
+        if (g * 9 < c.w + 20) { ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(sx - 3, c.y - 10, 6, c.h + 14); ctx.fillStyle = 'rgba(255,60,60,.6)'; ctx.fillRect(sx - 8, c.y - 6, 4, c.h + 6); }
+        if (c.dirtDirty) c.redrawDirt();
+        if (g > 40) {
+          const s = g < 46 ? 7 - (g - 40) * 0.5 : 4;
+          text('亮車快打', W / 2, 30 - (s - 4) * 6, { s: Math.round(s), a: 'c', c: '#ffd040', o: '#5a0000', grad: ['#fff6c0', '#ff8a10'] });
+        }
+        if (g > 56) text('S H I N E   B R A W L', W / 2, 86, { c: '#ffffff', a: 'c', o: '#5a0000' });
+      }
+      ctx.restore();
+      drawParticles();
+      if (f > 10) text(isTouch ? '點一下跳過' : '按任意鍵跳過', W - 4, H - 12, { c: '#5a5a6a', a: 'r' });
+    },
   },
 
   title: {
@@ -807,7 +913,7 @@ const SCENES = {
       text('亮車快打', W / 2, 32 + bob, { s: 4, a: 'c', c: '#ffd040', o: '#5a0000', grad: ['#fff6c0', '#ff8a10'] });
       text('S H I N E   B R A W L', W / 2, 88, { c: '#ffffff', a: 'c', o: '#5a0000' });
       // 四人
-      CHARS.forEach((ch, i) => drawChar(ch, 'idle' + (Math.floor((G.t + i * 11) / 22) % 2), 84 + i * 72, 186, i < 2 ? 1 : -1));
+      CHARS.forEach((ch, i) => drawChar(ch, 'idle' + (Math.floor((G.t + i * 11) / 22) % 2), 26 + i * 47, 186, i < 4 ? 1 : -1));
       px(0, 186, W, 1, '#ff3a3a');
       if (G.t % 60 < 40) text(isTouch ? '點一下畫面開始' : 'PRESS ENTER 開始', W / 2, 192, { c: '#ffffff', a: 'c', o: '#000' });
       text('HI ' + String(G.hi).padStart(7, '0'), W - 6, 204, { c: '#ffd040', a: 'r', o: '#000' });
@@ -817,14 +923,15 @@ const SCENES = {
   },
 
   select: {
-    enter() { this.cur = G.chIdx; this.lock = 0; markMat(this.cur); },
+    enter() { this.cur = G.chIdx; this.lock = 0; markMat(this.cur); Audio2.play('select'); },
     update() {
       const I = Input.pressed, n = CHARS.length;
       if (this.lock) { if (++this.lock > 50) { G.total = 0; P = null; setupStage(0); go('intro'); } return; }
-      if (I.left) { this.cur = (this.cur + n - 1) % n; Audio2.sfx('blip'); markMat(this.cur); }
-      if (I.right) { this.cur = (this.cur + 1) % n; Audio2.sfx('blip'); markMat(this.cur); }
-      if (I.up || I.down) { this.cur = (this.cur + 4) % n; Audio2.sfx('blip'); markMat(this.cur); }
-      if (I.p || I.k || I.start) { G.chIdx = this.cur; this.lock = 1; Audio2.sfx('confirm'); }
+      const mv = d => { this.cur = (this.cur + d + n) % n; Audio2.sfx('cursor'); Audio2.sfx('ch_' + CHARS[this.cur].id); markMat(this.cur); };
+      if (I.left) mv(-1);
+      if (I.right) mv(1);
+      if (I.up || I.down) mv(4);
+      if (I.p || I.k || I.start) { G.chIdx = this.cur; this.lock = 1; Audio2.stop(); Audio2.sfx('decide'); Audio2.sfx('ch_' + CHARS[this.cur].id); }
     },
     draw() {
       px(0, 0, W, H, '#0c0c14');
@@ -865,7 +972,7 @@ const SCENES = {
       updateParticles(); car.update();
       if (G.st === 10) Audio2.sfx('ready');
       const D = G.stageIdx === 0 ? 100 : 0;   // 第一關多留時間看操作
-      if (G.st === 100 + D) { Audio2.sfx('go'); Audio2.play('stage'); }
+      if (G.st === 100 + D) { Audio2.sfx('go'); Audio2.play(stage.music || 'fight1'); }
       if (G.st >= 130 + D || (G.st > 30 && G.st < 100 + D - 5 && (Input.pressed.start || Input.pressed.p))) { if (G.st < 100 + D) G.st = 100 + D - 1; else go('play'); }
     },
     draw() {
@@ -1013,7 +1120,7 @@ const SCENES = {
       if (Input.realPressed) { this.exit('title'); return; }
       aiThink();
       const st = tickPlay();
-      if (st || G.st > 60 * 24) this.exit('title');
+      if (st || G.st > 60 * 24) this.exit('opening');
     },
     draw() {
       drawPlay();
@@ -1091,6 +1198,12 @@ const SCENES = {
     },
     update() {
       if (G.st % 6 === 0) part({ x: rnd(0, W), y: -4, vy: rnd(0.4, 1), life: 260, type: 'star', col: pick(['#ffd040', '#ffffff', '#ff6060']) });
+      if (G.st % 50 === 20) {        // 煙火：先往上飛，再炸開
+        const x = rnd(170, 370), y = rnd(30, 90), col = pick(['#ff4040', '#ffd040', '#6ac8ff', '#ff8ac4', '#7dff6a']);
+        part({ x, y: H, vy: -(H - y) / 30, life: 30, col: '#ffffff', s: 1 });
+        setTimeout(() => { if (G.scene !== 'ending') return; burst(x, y, col, 26, 2.6); burst(x, y, '#ffffff', 8, 1.2); Audio2.sfx('firework'); }, 500);
+        Audio2.sfx('rocket');
+      }
       updateParticles();
       if (G.st > 240 && (Input.pressed.start || Input.pressed.p || Input.pressed.k)) {
         Audio2.sfx('confirm');
@@ -1207,4 +1320,4 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 const fontReady = document.fonts ? Promise.race([document.fonts.load(FONT), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
-Promise.all([fontReady, SPRITES_READY, CARS_READY, BGS_READY]).then(() => { textCache.clear(); go('title'); requestAnimationFrame(frame); });
+Promise.all([fontReady, SPRITES_READY, CARS_READY, BGS_READY]).then(() => { textCache.clear(); go('boot'); requestAnimationFrame(frame); });
